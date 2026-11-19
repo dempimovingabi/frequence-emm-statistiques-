@@ -53,7 +53,7 @@
   <button id="btnMenu" class="hamburger" aria-label="Menu">☰</button>
   <img src="./assets/images/logos/logo-emm.png" alt="Logo EMM RD Congo" class="topbar-logo" style="height:34px;width:34px;object-fit:cover;border-radius:6px;">
   <h1 class="topbar-title">EMM RD Congo</h1>
-  <button type="button" id="btnEditPeriode" class="topbar-date" title="Modifier la période">—</button>
+  <span id="moisAnnee" class="topbar-date">—</span>
   <button type="button" id="btnLogout" class="btn-logout" title="Verrouiller / Déconnexion">🔒 Déconnexion</button>
 </header>
 
@@ -81,6 +81,39 @@
 <div id="overlay" class="overlay"></div>
 
 <main class="main">
+  <div id="printHeader" class="print-only-header">
+    <h2>Église Messianique Mondiale — EMM RD Congo</h2>
+    <p id="printMetaLine">Rapport National</p>
+  </div>
+
+  <section class="periode-bar no-print">
+    <div class="periode-field">
+      <label for="selectMois">📅 Mois :</label>
+      <select id="selectMois">
+        <option value="JANVIER">JANVIER</option>
+        <option value="FÉVRIER">FÉVRIER</option>
+        <option value="MARS">MARS</option>
+        <option value="AVRIL">AVRIL</option>
+        <option value="MAI">MAI</option>
+        <option value="JUIN">JUIN</option>
+        <option value="JUILLET">JUILLET</option>
+        <option value="AOÛT">AOÛT</option>
+        <option value="SEPTEMBRE">SEPTEMBRE</option>
+        <option value="OCTOBRE">OCTOBRE</option>
+        <option value="NOVEMBRE">NOVEMBRE</option>
+        <option value="DÉCEMBRE">DÉCEMBRE</option>
+      </select>
+    </div>
+    <div class="periode-field">
+      <label for="inputAnnee">🗓️ Année :</label>
+      <input type="number" id="inputAnnee" min="2000" max="2100" step="1" placeholder="2026">
+    </div>
+    <div class="periode-field">
+      <label for="inputDateRef">📆 Date (calendrier) :</label>
+      <input type="date" id="inputDateRef">
+    </div>
+  </section>
+
   <section class="action-bar no-print">
     <input type="text" id="searchInput" placeholder="🔎 Rechercher..." class="search-input">
     <button class="btn btn-primary" id="btnNouveau">＋ Nouveau</button>
@@ -107,6 +140,7 @@
         <option>18</option><option>20</option><option>22</option><option>24</option>
       </select>
     </label>
+    <button type="button" id="btnClearSearch" class="btn btn-secondary" style="margin-left:auto;">↺ Réinitialiser recherche</button>
   </section>
 
   <section id="page-dashboard" class="page active">
@@ -327,4 +361,3 @@
 </script>
 </body>
 </html>
-
