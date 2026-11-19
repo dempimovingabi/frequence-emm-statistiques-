@@ -120,6 +120,40 @@ function goToPage(page) {
   renderAll();
 }
 
+function duplicateSelectedRecord() {
+  if (!App.selectedRowId || !App.selectedType) {
+    return alert("Sélectionnez d'abord une ligne à dupliquer.");
+  }
+  const list = Store.getByType(App.selectedType);
+  const original = list.find(r => r.id === App.selectedRowId);
+  if (!original) return alert("Élément introuvable.");
+
+  const resetNumbers = confirm(
+    `Dupliquer "${original.denomination || "cet élément"}" pour ${Store.data.periode.mois} ${Store.data.periode.annee} ?\n\n` +
+    `• Cliquez sur OK pour garder les effectifs de base (Baptisés/Actifs) et remettre les fréquences du culte à 0.\n` +
+    `• Cliquez sur Annuler pour annuler la duplication.`
+  );
+  if (!resetNumbers) return;
+
+  const clone = Object.assign({}, original);
+  delete clone.id;
+  clone.dateRapport = Store.data.periode.dateReference || new Date().toISOString().slice(0, 10);
+  clone.periodeMois = Store.data.periode.mois;
+  clone.periodeAnnee = Store.data.periode.annee;
+
+  if (App.selectedType === "numerique" || App.selectedType === "diffusion") {
+    clone.culteMembres = 0;
+    clone.culteSymp = 0;
+    clone.culteNV = 0;
+    clone.totalCulte = 0;
+  }
+
+  const created = Store.add(App.selectedType, clone);
+  App.selectedRowId = created.id;
+  renderAll();
+  openForm(App.selectedType, created.id);
+}
+
 function bindActions() {
   $("#searchInput").addEventListener("input", (e) => { App.searchTerm = e.target.value.toLowerCase(); renderAll(); });
   const btnClear = $("#btnClearSearch");
@@ -132,6 +166,8 @@ function bindActions() {
   }
   $("#btnNouveau").addEventListener("click", () => openFormForCurrentPage(null));
   $("#btnModifier").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); openFormForCurrentPage(App.selectedRowId); });
+  const btnDup = $("#btnDupliquer");
+  if (btnDup) btnDup.addEventListener("click", duplicateSelectedRecord);
   $("#btnSupprimer").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); if (!confirm("Supprimer ?")) return; Store.remove(App.selectedType, App.selectedRowId); clearSelection(); renderAll(); });
   $("#btnArchiver").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); if (!confirm("Archiver dans la bibliothèque ?")) return; Store.archive(App.selectedType, App.selectedRowId); clearSelection(); renderAll(); });
   $("#btnCloseModal").addEventListener("click", closeModal);
@@ -776,7 +812,6 @@ function openForm(type, editId, prefill = {}) {
 
   let html = "";
 
-  // Sélecteur rapide depuis les entités enregistrées pour les rapports
   if (type !== "entites" && !editId && (Store.data.entites || []).length > 0) {
     html += `
       <div class="form-group" style="grid-column: 1 / -1; background:#f0fdf4; padding:10px; border-radius:8px; border:1px solid #bbf7d0;">
