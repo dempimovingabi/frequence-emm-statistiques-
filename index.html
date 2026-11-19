@@ -96,6 +96,14 @@ body { margin: 0; font-family: Arial, sans-serif; background: #f1f5f9; color: #0
 .btn-warning { background: #d97706; }
 .btn-success { background: #16a34a; }
 .btn-secondary { background: #64748b; }
+.btn-eye { background: #0f766e; padding: 4px 8px; font-size: 12px; }
+
+.province-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.prov-pill {
+  border: 1px solid #cbd5e1; background: #ffffff; color: #1e293b;
+  padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.prov-pill.active { background: #15803d; color: #ffffff; border-color: #15803d; }
 
 .page { display: none; }
 .page.active { display: block; }
@@ -142,7 +150,7 @@ table.data-table tr.row-subtotal td { background: #e2e8f0; font-weight: 700; }
 
 .print-only-header { display: none; }
 @media print {
-  .no-print, .topbar, .sidebar, .overlay, .modal, .splash-screen, .auth-gate, .btn-logout { display: none !important; }
+  .no-print, .topbar, .sidebar, .overlay, .modal, .splash-screen, .auth-gate, .btn-logout, .btn-eye { display: none !important; }
   .print-only-header { display: block; text-align: center; margin-bottom: 14px; border-bottom: 2px solid #15803d; padding-bottom: 8px; }
   .main { padding: 0; max-width: 100%; }
   .page { display: block !important; page-break-after: always; }
@@ -204,6 +212,7 @@ table.data-table tr.row-subtotal td { background: #e2e8f0; font-weight: 700; }
   </div>
   <nav class="sidebar-nav">
     <a href="#dashboard" class="nav-link active" data-page="dashboard">📊 Tableau de bord</a>
+    <a href="#entites" class="nav-link" data-page="entites">🏢 Répertoire Entités</a>
     <a href="#graphiques" class="nav-link" data-page="graphiques">📈 Graphiques</a>
     <a href="#numerique" class="nav-link" data-page="numerique">💻 Rapport Numérique</a>
     <a href="#diffusion" class="nav-link" data-page="diffusion">📻 Rapport Diffusion</a>
@@ -289,6 +298,11 @@ table.data-table tr.row-subtotal td { background: #e2e8f0; font-weight: 700; }
     <div class="province-summary" id="provinceSummary"></div>
   </section>
 
+  <section id="page-entites" class="page">
+    <h2>🏢 Enregistrement des Entités par Province</h2>
+    <div id="entitesContent"></div>
+  </section>
+
   <section id="page-graphiques" class="page">
     <h2>📈 Évolution des Fréquences</h2>
     <div id="graphiquesContent"></div>
@@ -338,7 +352,7 @@ table.data-table tr.row-subtotal td { background: #e2e8f0; font-weight: 700; }
     </div>
     <div class="modal-body" id="modalBody"></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="btnCancel">Annuler</button>
+      <button class="btn btn-secondary" id="btnCancel">Fermer</button>
       <button class="btn btn-primary" id="btnSave">💾 Enregistrer</button>
     </div>
   </div>
