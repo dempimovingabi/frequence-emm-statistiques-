@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1e3a8a">
+<title>EMM RD Congo — Gestion Nationale</title>
+<link rel="stylesheet" href="./css/style.css">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" href="./icon-192.png">
+</head>
+<body>
+
+<header class="topbar">
+  <button id="btnMenu" class="hamburger" aria-label="Menu">☰</button>
+  <img src="./assets/images/logos/logo-emm.png" alt="Logo EMM RD Congo" class="topbar-logo" style="height:34px;width:34px;object-fit:cover;border-radius:6px;">
+  <h1 class="topbar-title">EMM RD Congo</h1>
+  <span id="moisAnnee" class="topbar-date">—</span>
+</header>
+
+<aside id="sidebar" class="sidebar">
+  <div class="sidebar-header">
+    <strong>Navigation</strong>
+    <button id="btnCloseMenu" class="btn-close">✕</button>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#dashboard" class="nav-link active" data-page="dashboard">📊 Tableau de bord</a>
+    <a href="#numerique" class="nav-link" data-page="numerique">💻 Rapport Numérique</a>
+    <a href="#diffusion" class="nav-link" data-page="diffusion">📻 Rapport Diffusion</a>
+    <a href="#diffusion-suite" class="nav-link" data-page="diffusion-suite">📋 Diffusion Suite</a>
+    <a href="#synthese" class="nav-link" data-page="synthese">🏛️ Synthèse Nationale</a>
+    <a href="#rapport-global" class="nav-link" data-page="rapport-global">🌍 Rapport Global</a>
+    <a href="#rapport-detaille" class="nav-link" data-page="rapport-detaille">🔎 Rapport Détaillé</a>
+    <a href="#archives" class="nav-link" data-page="archives">🗄️ Archives</a>
+  </nav>
+  <div class="sidebar-footer"><small>© EMM RD Congo</small></div>
+</aside>
+<div id="overlay" class="overlay"></div>
+
+<main class="main">
+  <section class="action-bar no-print">
+    <input type="text" id="searchInput" placeholder="🔎 Rechercher..." class="search-input">
+    <button class="btn btn-primary" id="btnNouveau">＋ Nouveau</button>
+    <button class="btn btn-info" id="btnModifier">✏️ Modifier</button>
+    <button class="btn btn-danger" id="btnSupprimer">🗑️ Supprimer</button>
+    <button class="btn btn-warning" id="btnArchiver">📦 Archiver</button>
+    <button class="btn btn-success" id="btnPDF">📄 PDF / Imprimer</button>
+  </section>
+
+  <section class="print-options no-print">
+    <label>Police :
+      <select id="fontSelect">
+        <option value="Arial">Arial</option><option value="Calibri">Calibri</option>
+        <option value="Georgia">Georgia</option><option value="Times New Roman">Times New Roman</option>
+        <option value="Verdana">Verdana</option><option value="Tahoma">Tahoma</option>
+        <option value="Courier New">Courier New</option><option value="Trebuchet MS">Trebuchet MS</option>
+        <option value="Comic Sans MS">Comic Sans MS</option><option value="Segoe UI">Segoe UI</option>
+      </select>
+    </label>
+    <label>Taille :
+      <select id="fontSize">
+        <option>8</option><option>9</option><option>10</option><option>11</option>
+        <option selected>12</option><option>14</option><option>16</option>
+        <option>18</option><option>20</option><option>22</option><option>24</option>
+      </select>
+    </label>
+  </section>
+
+  <section id="page-dashboard" class="page active">
+    <h2>📊 Tableau de bord national</h2>
+    <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="province-summary" id="provinceSummary"></div>
+  </section>
+
+  <section id="page-numerique" class="page">
+    <h2>💻 Rapport Numérique</h2>
+    <div class="table-wrapper"><table class="data-table" id="tableNumerique"></table></div>
+  </section>
+
+  <section id="page-diffusion" class="page">
+    <h2>📻 Rapport Diffusion</h2>
+    <div class="table-wrapper"><table class="data-table" id="tableDiffusion"></table></div>
+  </section>
+
+  <section id="page-diffusion-suite" class="page">
+    <h2>📋 Rapport Diffusion — Suite</h2>
+    <div class="table-wrapper"><table class="data-table" id="tableDiffusionSuite"></table></div>
+  </section>
+
+  <section id="page-synthese" class="page">
+    <h2>🏛️ Synthèse Nationale</h2>
+    <div id="syntheseContent"></div>
+  </section>
+
+  <section id="page-rapport-global" class="page">
+    <h2>🌍 Rapport Global</h2>
+    <div id="rapportGlobal"></div>
+  </section>
+
+  <section id="page-rapport-detaille" class="page">
+    <h2>🔎 Rapport Détaillé par Entité</h2>
+    <div id="rapportDetaille"></div>
+  </section>
+
+  <section id="page-archives" class="page">
+    <h2>🗄️ Archives</h2>
+    <div id="archivesList"></div>
+  </section>
+</main>
+
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modalTitle">Formulaire</h3>
+      <button class="btn-close" id="btnCloseModal">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="btnCancel">Annuler</button>
+      <button class="btn btn-primary" id="btnSave">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script src="./js/data.js"></script>
+<script src="./js/app.js"></script>
+<script src="./js/pdf.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW:", err));
+    });
+  }
+</script>
+</body>
+</html>
