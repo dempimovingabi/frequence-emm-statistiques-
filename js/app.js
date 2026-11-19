@@ -8,6 +8,7 @@ function calcTotalCulte(r) { return num(r.culteMembres) + num(r.culteSymp) + num
 document.addEventListener("DOMContentLoaded", () => {
   Store.load();
   updatePeriodeLabel();
+  updateNetStatus();
   bindNavigation();
   bindActions();
   bindPrintOptions();
@@ -15,7 +16,21 @@ document.addEventListener("DOMContentLoaded", () => {
   goToPage("dashboard");
 });
 
-function updatePeriodeLabel() { $("#moisAnnee").textContent = `${Store.data.periode.mois} ${Store.data.periode.annee}`; }
+function updatePeriodeLabel() {
+  const el = $("#moisAnnee");
+  if (el) el.textContent = `${Store.data.periode.mois} ${Store.data.periode.annee}`;
+}
+
+function updateNetStatus() {
+  const el = $("#netStatus");
+  if (!el) return;
+  const online = navigator.onLine;
+  el.textContent = online ? "● En ligne (Hors-ligne prêt)" : "● Hors connexion (Mode local)";
+  el.style.color = online ? "#4ade80" : "#fbbf24";
+}
+
+window.addEventListener("online", updateNetStatus);
+window.addEventListener("offline", updateNetStatus);
 
 function bindNavigation() {
   $("#btnMenu").addEventListener("click", openMenu);
@@ -43,12 +58,105 @@ function bindActions() {
   $("#btnCloseModal").addEventListener("click", closeModal);
   $("#btnCancel").addEventListener("click", closeModal);
   $("#btnSave").addEventListener("click", saveForm);
+
+  const btnPeriode = $("#btnEditPeriode");
+  if (btnPeriode) {
+    btnPeriode.addEventListener("click", () => {
+      const nouveauMois = prompt("Mois de la période (ex. NOVEMBRE, DÉCEMBRE) :", Store.data.periode.mois || "");
+      if (nouveauMois === null) return;
+      const nouvelleAnnee = prompt("Année de la période (ex. 2026) :", Store.data.periode.annee || "2026");
+      if (nouvelleAnnee === null) return;
+      if (nouveauMois.trim()) Store.data.periode.mois = nouveauMois.trim().toUpperCase();
+      if (nouvelleAnnee.trim() && !isNaN(Number(nouvelleAnnee.trim()))) Store.data.periode.annee = Number(nouvelleAnnee.trim());
+      Store.save();
+      updatePeriodeLabel();
+      alert("✅ Période mise à jour.");
+    });
+  }
 }
 function clearSelection() { App.selectedRowId = null; App.selectedType = null; }
 
 function renderAll() {
-  renderDashboard(); renderTable("numerique"); renderTable("diffusion"); renderTable("diffusionSuite");
+  renderDashboard(); renderGraphiques(); renderTable("numerique"); renderTable("diffusion"); renderTable("diffusionSuite");
   renderSynthese(); renderRapportGlobal(); renderRapportDetaille(); renderArchives();
+}
+
+function renderGraphiques() {
+  const container = $("#graphiquesContent");
+  if (!container) return;
+
+  const search = App.searchTerm;
+  const items = [
+    ...Store.data.numerique.map(r => ({
+      label: `${r.denomination || "(Sans nom)"} — ${r.province || "—"} (Numérique)`,
+      m: num(r.culteMembres),
+      s: num(r.culteSymp),
+      nv: num(r.culteNV)
+    })),
+    ...Store.data.diffusion.map(r => ({
+      label: `${r.denomination || "(Sans nom)"} — ${r.province || "—"} (Diffusion)`,
+      m: num(r.culteMembres),
+      s: num(r.culteSymp),
+      nv: num(r.culteNV)
+    }))
+  ].map(x => ({ ...x, total: x.m + x.s + x.nv }))
+   .filter(x => !search || x.label.toLowerCase().includes(search))
+   .sort((a, b) => b.total - a.total);
+
+  const byProv = PROVINCES.map(p => {
+    let m = 0, s = 0, nv = 0;
+    Store.data.numerique.filter(r => r.province === p).forEach(r => { m += num(r.culteMembres); s += num(r.culteSymp); nv += num(r.culteNV); });
+    Store.data.diffusion.filter(r => r.province === p).forEach(r => { m += num(r.culteMembres); s += num(r.culteSymp); nv += num(r.culteNV); });
+    return { label: p, m, s, nv, total: m + s + nv };
+  }).filter(x => x.total > 0 && (!search || x.label.toLowerCase().includes(search)))
+    .sort((a, b) => b.total - a.total);
+
+  const legendHtml = `
+    <div class="chart-legend">
+      <span class="legend-item"><span class="legend-dot" style="background:#15803d;"></span>Membres</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#2563eb;"></span>Sympathisants</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#d97706;"></span>Nouveaux Venus</span>
+    </div>`;
+
+  function buildBars(list, emptyMsg) {
+    if (!list.length) return `<p style="text-align:center;color:#64748b;padding:12px;">${emptyMsg}</p>`;
+    const maxVal = Math.max(...list.map(x => x.total), 1);
+    return list.map(x => {
+      const pctTotal = Math.round((x.total / maxVal) * 100);
+      const mShare = x.total > 0 ? (x.m / x.total) * pctTotal : 0;
+      const sShare = x.total > 0 ? (x.s / x.total) * pctTotal : 0;
+      const nvShare = x.total > 0 ? (x.nv / x.total) * pctTotal : 0;
+      return `
+        <div class="bar-row">
+          <div class="bar-row-header">
+            <strong>${x.label}</strong>
+            <span><strong>${fmt(x.total)}</strong></span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-seg-m" style="width:${mShare}%;"></div>
+            <div class="bar-seg-s" style="width:${sShare}%;"></div>
+            <div class="bar-seg-nv" style="width:${nvShare}%;"></div>
+          </div>
+          <div class="bar-meta">
+            <span>Membres : <strong>${fmt(x.m)}</strong></span>
+            <span>Symp. : <strong>${fmt(x.s)}</strong></span>
+            <span>NV : <strong>${fmt(x.nv)}</strong></span>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  container.innerHTML = `
+    <div class="report-block">
+      <h3>Fréquences du Culte Mensuel par Province</h3>
+      ${legendHtml}
+      ${buildBars(byProv, "Aucune fréquence enregistrée par province pour le moment.")}
+    </div>
+    <div class="report-block">
+      <h3>Évolution des Fréquences par Entité</h3>
+      ${legendHtml}
+      ${buildBars(items, "Aucune entité avec fréquences enregistrées pour le moment.")}
+    </div>`;
 }
 
 function renderDashboard() {
