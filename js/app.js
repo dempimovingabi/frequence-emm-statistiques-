@@ -4,7 +4,9 @@ const App = {
   selectedType: null,
   editingId: null,
   currentFormType: null,
+  viewOnlyMode: false,
   searchTerm: "",
+  selectedProvince: "Kasaï-Central",
   archiveYearFilter: "ALL",
   archiveMonthFilter: "ALL"
 };
@@ -139,8 +141,135 @@ function bindActions() {
 function clearSelection() { App.selectedRowId = null; App.selectedType = null; }
 
 function renderAll() {
-  renderDashboard(); renderGraphiques(); renderTable("numerique"); renderTable("diffusion"); renderTable("diffusionSuite");
-  renderSynthese(); renderRapportGlobal(); renderRapportDetaille(); renderArchives();
+  renderDashboard();
+  renderEntitesPage();
+  renderGraphiques();
+  renderTable("numerique");
+  renderTable("diffusion");
+  renderTable("diffusionSuite");
+  renderSynthese();
+  renderRapportGlobal();
+  renderRapportDetaille();
+  renderArchives();
+}
+
+function renderEntitesPage() {
+  const container = $("#entitesContent");
+  if (!container) return;
+
+  const prov = App.selectedProvince || "Kasaï-Central";
+  const allEntites = Store.data.entites || [];
+  const provEntites = allEntites.filter(e => e.province === prov && (!App.searchTerm || Object.values(e).some(v => String(v).toLowerCase().includes(App.searchTerm))));
+
+  const pillsHtml = PROVINCES.map(p => {
+    const count = allEntites.filter(e => e.province === p).length;
+    return `<button type="button" class="prov-pill ${p === prov ? "active" : ""}" data-prov="${p}">${p}${count > 0 ? ` (${count})` : ""}</button>`;
+  }).join("");
+
+  const rowsHtml = provEntites.length === 0
+    ? `<tr><td colspan="7" style="text-align:center;padding:20px;">Aucune entité enregistrée pour <strong>${prov}</strong>. Cliquez sur <strong>＋ Enregistrer une entité</strong> pour commencer.</td></tr>`
+    : provEntites.map((e, idx) => `
+      <tr data-id="${e.id}" data-type="entites" class="${e.id === App.selectedRowId ? 'selected' : ''}">
+        <td>${idx + 1}</td>
+        <td><strong>${e.denomination || '—'}</strong></td>
+        <td>${e.typeEntite || '—'}</td>
+        <td>${e.responsable || '—'}</td>
+        <td>${e.telephone || '—'}</td>
+        <td>${e.observations || '—'}</td>
+        <td style="text-align:center;">
+          <button type="button" class="btn btn-eye btn-view-record" data-type="entites" data-id="${e.id}" title="Consulter">👁️</button>
+        </td>
+      </tr>`).join("");
+
+  container.innerHTML = `
+    <div class="report-block">
+      <h3>1. Choisissez la Province (ex. Kasaï-Central)</h3>
+      <div class="province-pills" id="entiteProvPills">${pillsHtml}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;">
+        <div>
+          <strong>Province active :</strong> ${prov} — <strong>${provEntites.length}</strong> entité(s) répertoriée(s)
+        </div>
+        <button type="button" class="btn btn-success" id="btnAddEntiteProv">＋ Enregistrer une entité (${prov})</button>
+      </div>
+    </div>
+
+    <div class="report-block">
+      <h3>2. Entités enregistrées — ${prov}</h3>
+      <div class="table-wrapper">
+        <table class="data-table" id="tableEntitesProv">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Dénomination</th>
+              <th>Type d'entité</th>
+              <th>Responsable</th>
+              <th>Téléphone</th>
+              <th>Observations</th>
+              <th>Aperçu</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  $$(".prov-pill", container).forEach(btn => {
+    btn.addEventListener("click", () => {
+      App.selectedProvince = btn.dataset.prov;
+      clearSelection();
+      renderEntitesPage();
+    });
+  });
+
+  const btnAdd = $("#btnAddEntiteProv");
+  if (btnAdd) {
+    btnAdd.addEventListener("click", () => {
+      openForm("entites", null, { province: prov });
+    });
+  }
+
+  const tbl = $("#tableEntitesProv");
+  if (tbl) {
+    $$("tbody tr[data-id]", tbl).forEach(tr => {
+      tr.addEventListener("click", (ev) => {
+        if (ev.target.closest(".btn-view-record")) return;
+        const id = tr.dataset.id;
+        if (App.selectedRowId === id) { clearSelection(); } else { App.selectedRowId = id; App.selectedType = "entites"; }
+        $$("tbody tr", tbl).forEach(t => t.classList.remove("selected"));
+        if (App.selectedRowId) tr.classList.add("selected");
+      });
+    });
+
+    $$(".btn-view-record", tbl).forEach(btn => {
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openEyeModal(btn.dataset.type, btn.dataset.id);
+      });
+    });
+  }
+}
+
+function openEyeModal(type, id) {
+  const record = (Store.getByType(type) || []).find(r => r.id === id);
+  if (!record) return;
+  const schema = SCHEMAS[type];
+  App.viewOnlyMode = true;
+  $("#modalTitle").textContent = `👁️ Aperçu Détaillé — ${record.denomination || schema.title}`;
+
+  let html = "";
+  schema.fields.forEach(f => {
+    const val = f.key === "totalCulte" ? calcTotalCulte(record) : (record[f.key] !== undefined && record[f.key] !== "" ? record[f.key] : "—");
+    const displayVal = f.type === "number" && val !== "—" ? fmt(val) : val;
+    html += `
+      <div class="form-group">
+        <label>${f.label}</label>
+        <input type="text" value="${String(displayVal).replace(/"/g, "&quot;")}" readonly style="background:#f8fafc;font-weight:${f.computed ? "700" : "500"};color:#0f172a;">
+      </div>`;
+  });
+
+  $("#modalBody").innerHTML = html;
+  $("#btnSave").style.display = "none";
+  $("#modal").classList.add("show");
 }
 
 function renderGraphiques() {
@@ -222,7 +351,7 @@ function renderGraphiques() {
 }
 
 function renderDashboard() {
-  const numRows = Store.data.numerique, diff = Store.data.diffusion;
+  const numRows = Store.data.numerique, diff = Store.data.diffusion, entites = Store.data.entites || [];
   const totalBaptises = numRows.reduce((s, r) => s + num(r.baptises), 0);
   const totalActifs = numRows.reduce((s, r) => s + num(r.actifs), 0);
   const culteMembresNum = numRows.reduce((s, r) => s + num(r.culteMembres), 0);
@@ -236,34 +365,40 @@ function renderDashboard() {
   const totalFleurs = numRows.reduce((s, r) => s + num(r.fleursDistrib), 0) + diff.reduce((s, r) => s + num(r.fleursDistrib), 0);
 
   const kpis = [
-    { label: "Membres Baptisés (Num)", value: totalBaptises }, { label: "Membres Actifs (Num)", value: totalActifs },
-    { label: "Culte — Membres", value: culteMembresNum + culteMembresDiff }, { label: "Culte — Sympathisants", value: culteSympNum + culteSympDiff },
-    { label: "Culte — Nouveaux Venus", value: culteNVNum + culteNVDiff }, { label: "TOTAL CULTE MENSUEL", value: totalCulte },
-    { label: "Pratiques Johrei", value: totalJohrei }, { label: "Fleurs Distribuées", value: totalFleurs }
+    { label: "Entités Répertoriées", value: entites.length },
+    { label: "Membres Baptisés (Num)", value: totalBaptises },
+    { label: "Membres Actifs (Num)", value: totalActifs },
+    { label: "Culte — Membres", value: culteMembresNum + culteMembresDiff },
+    { label: "Culte — Sympathisants", value: culteSympNum + culteSympDiff },
+    { label: "Culte — Nouveaux Venus", value: culteNVNum + culteNVDiff },
+    { label: "TOTAL CULTE MENSUEL", value: totalCulte },
+    { label: "Pratiques Johrei", value: totalJohrei },
+    { label: "Fleurs Distribuées", value: totalFleurs }
   ];
 
   $("#kpiGrid").innerHTML = kpis.map(k => `<div class="kpi-card"><div class="kpi-label">${k.label}</div><div class="kpi-value">${fmt(k.value)}</div></div>`).join("");
 
   const byProv = {};
-  PROVINCES.forEach(p => byProv[p] = { numM: 0, numS: 0, numNV: 0, diffM: 0, diffS: 0, diffNV: 0 });
+  PROVINCES.forEach(p => byProv[p] = { entCount: 0, numM: 0, numS: 0, numNV: 0, diffM: 0, diffS: 0, diffNV: 0 });
+  entites.forEach(e => { if (byProv[e.province]) byProv[e.province].entCount += 1; });
   numRows.forEach(r => { if (!byProv[r.province]) return; byProv[r.province].numM += num(r.culteMembres); byProv[r.province].numS += num(r.culteSymp); byProv[r.province].numNV += num(r.culteNV); });
   diff.forEach(r => { if (!byProv[r.province]) return; byProv[r.province].diffM += num(r.culteMembres); byProv[r.province].diffS += num(r.culteSymp); byProv[r.province].diffNV += num(r.culteNV); });
 
   let rows = "";
   PROVINCES.forEach(p => {
     const v = byProv[p], totalNum = v.numM + v.numS + v.numNV, totalDiff = v.diffM + v.diffS + v.diffNV;
-    if (totalNum + totalDiff === 0) return;
-    rows += `<tr><td>${p}</td><td class="num">${fmt(v.numM)}</td><td class="num">${fmt(v.numS)}</td><td class="num">${fmt(v.numNV)}</td><td class="num"><strong>${fmt(totalNum)}</strong></td><td class="num">${fmt(v.diffM)}</td><td class="num">${fmt(v.diffS)}</td><td class="num">${fmt(v.diffNV)}</td><td class="num"><strong>${fmt(totalDiff)}</strong></td></tr>`;
+    if (totalNum + totalDiff === 0 && v.entCount === 0) return;
+    rows += `<tr><td>${p}</td><td class="num">${fmt(v.entCount)}</td><td class="num">${fmt(v.numM)}</td><td class="num">${fmt(v.numS)}</td><td class="num">${fmt(v.numNV)}</td><td class="num"><strong>${fmt(totalNum)}</strong></td><td class="num">${fmt(v.diffM)}</td><td class="num">${fmt(v.diffS)}</td><td class="num">${fmt(v.diffNV)}</td><td class="num"><strong>${fmt(totalDiff)}</strong></td></tr>`;
   });
 
-  if (!rows) rows = `<tr><td colspan="9" style="text-align:center;">Aucune donnée pour le moment.</td></tr>`;
+  if (!rows) rows = `<tr><td colspan="10" style="text-align:center;">Aucune donnée pour le moment.</td></tr>`;
 
   $("#provinceSummary").innerHTML = `
     <div class="synth-section">
-      <h3>Synthèse par Province — Culte Mensuel</h3>
+      <h3>Synthèse par Province — Entités & Culte Mensuel</h3>
       <div class="table-wrapper">
         <table class="data-table">
-          <thead><tr><th rowspan="2">Province</th><th colspan="4">Numérique</th><th colspan="4">Diffusion</th></tr>
+          <thead><tr><th rowspan="2">Province</th><th rowspan="2">Entités</th><th colspan="4">Numérique</th><th colspan="4">Diffusion</th></tr>
           <tr><th>Membres</th><th>Symp.</th><th>NV</th><th>Total</th><th>Membres</th><th>Symp.</th><th>NV</th><th>Total</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -296,9 +431,9 @@ function renderTable(type) {
     ];
 
   table.innerHTML = `
-    <thead><tr><th>#</th>${cols.map(c => `<th>${c.label}</th>`).join("")}</tr></thead>
+    <thead><tr><th>#</th>${cols.map(c => `<th>${c.label}</th>`).join("")}<th>Aperçu</th></tr></thead>
     <tbody>
-      ${filtered.length === 0 ? `<tr><td colspan="${cols.length + 1}" style="text-align:center;padding:20px;">Aucune donnée (${filtered.length} entrée).</td></tr>` : ""}
+      ${filtered.length === 0 ? `<tr><td colspan="${cols.length + 2}" style="text-align:center;padding:20px;">Aucune donnée (${filtered.length} entrée).</td></tr>` : ""}
       ${filtered.map((r, i) => {
         const valFor = (c) => c.key === "totalCulte" ? calcTotalCulte(r) : r[c.key];
         return `
@@ -308,16 +443,25 @@ function renderTable(type) {
             const txt = c.num ? fmt(v) : (v || '—');
             return `<td class="${c.num ? 'num' : ''}">${c.bold ? `<strong>${txt}</strong>` : txt}</td>`;
           }).join("")}
+          <td style="text-align:center;"><button type="button" class="btn btn-eye btn-view-record" data-type="${type}" data-id="${r.id}" title="Consulter">👁️</button></td>
         </tr>`;
       }).join("")}
     </tbody>`;
 
   $$("tbody tr[data-id]", table).forEach(tr => {
-    tr.addEventListener("click", () => {
+    tr.addEventListener("click", (ev) => {
+      if (ev.target.closest(".btn-view-record")) return;
       const id = tr.dataset.id;
       if (App.selectedRowId === id) { clearSelection(); } else { App.selectedRowId = id; App.selectedType = type; }
       $$("tbody tr", table).forEach(t => t.classList.remove("selected"));
       if (App.selectedRowId) tr.classList.add("selected");
+    });
+  });
+
+  $$(".btn-view-record", table).forEach(btn => {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      openEyeModal(btn.dataset.type, btn.dataset.id);
     });
   });
 }
@@ -359,36 +503,73 @@ function renderSynthese() {
 function renderRapportGlobal() {
   let html = "";
   [{type:"numerique",title:"💻 Numérique"},{type:"diffusion",title:"📻 Diffusion"},{type:"diffusionSuite",title:"📋 Diffusion Suite"}].forEach(s => {
-    const rows = Store.getByType(s.type), fields = SCHEMAS[s.type].fields;
-    html += `<div class="report-block"><h3>${s.title}</h3><div class="table-wrapper"><table class="data-table"><thead><tr>${fields.map(f => `<th>${f.label}</th>`).join("")}</tr></thead><tbody>
-      ${rows.length === 0 ? `<tr><td colspan="${fields.length}" style="text-align:center;">Aucune donnée</td></tr>` : ""}
-      ${rows.map(r => `<tr>${fields.map(f => {
-        const val = f.key === "totalCulte" ? calcTotalCulte(r) : r[f.key];
-        const txt = f.type === "number" ? fmt(val) : (val || '—');
-        return `<td class="${f.type === 'number' ? 'num' : ''}">${f.computed ? `<strong>${txt}</strong>` : txt}</td>`;
-      }).join("")}</tr>`).join("")}
-    </tbody></table></div></div>`;
+    const rows = Store.getByType(s.type).filter(r => !App.searchTerm || Object.values(r).some(v => String(v).toLowerCase().includes(App.searchTerm)));
+    const fields = SCHEMAS[s.type].fields;
+    html += `
+      <div class="report-block">
+        <h3>${s.title} (${rows.length})</h3>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead><tr>${fields.map(f => `<th>${f.label}</th>`).join("")}<th>Aperçu</th></tr></thead>
+            <tbody>
+              ${rows.length === 0 ? `<tr><td colspan="${fields.length + 1}" style="text-align:center;">Aucune donnée</td></tr>` : ""}
+              ${rows.map(r => `
+                <tr>
+                  ${fields.map(f => {
+                    const val = f.key === "totalCulte" ? calcTotalCulte(r) : r[f.key];
+                    const txt = f.type === "number" ? fmt(val) : (val || '—');
+                    return `<td class="${f.type === 'number' ? 'num' : ''}">${f.computed ? `<strong>${txt}</strong>` : txt}</td>`;
+                  }).join("")}
+                  <td style="text-align:center;"><button type="button" class="btn btn-eye btn-view-record" data-type="${s.type}" data-id="${r.id}" title="Consulter">👁️</button></td>
+                </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
   });
   $("#rapportGlobal").innerHTML = html;
+
+  $$(".btn-view-record", $("#rapportGlobal")).forEach(btn => {
+    btn.addEventListener("click", () => openEyeModal(btn.dataset.type, btn.dataset.id));
+  });
 }
 
 function renderRapportDetaille() {
-  const all = [...Store.data.numerique.map(r => ({...r, _src:"numerique"})),...Store.data.diffusion.map(r => ({...r, _src:"diffusion"})),...Store.data.diffusionSuite.map(r => ({...r, _src:"diffusionSuite"}))].filter(r => !App.searchTerm || Object.values(r).some(v => String(v).toLowerCase().includes(App.searchTerm)));
+  const all = [
+    ...Store.data.numerique.map(r => ({...r, _src:"numerique"})),
+    ...Store.data.diffusion.map(r => ({...r, _src:"diffusion"})),
+    ...Store.data.diffusionSuite.map(r => ({...r, _src:"diffusionSuite"}))
+  ].filter(r => !App.searchTerm || Object.values(r).some(v => String(v).toLowerCase().includes(App.searchTerm)));
 
   if (all.length === 0) { $("#rapportDetaille").innerHTML = `<div class="report-block"><p style="text-align:center;">Aucune donnée.</p></div>`; return; }
 
   let html = "";
   all.forEach(r => {
     const schema = SCHEMAS[r._src];
-    html += `<div class="report-block"><h3>${schema.title} — ${r.denomination || "(sans nom)"} <small>(${r.typeEntite || '—'} • ${r.province || '—'})</small></h3><div class="table-wrapper"><table class="data-table"><tbody>
-      ${schema.fields.filter(f => f.computed || (r[f.key] !== undefined && r[f.key] !== "")).map(f => {
-        const val = f.key === "totalCulte" ? calcTotalCulte(r) : r[f.key];
-        const txt = f.type === 'number' ? fmt(val) : val;
-        return `<tr><th style="width:40%;background:#f1f5f9;color:#334155;">${f.label}</th><td>${f.computed ? `<strong>${txt}</strong>` : txt}</td></tr>`;
-      }).join("")}
-    </tbody></table></div></div>`;
+    html += `
+      <div class="report-block">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+          <h3 style="margin:0;">${schema.title} — ${r.denomination || "(sans nom)"} <small>(${r.typeEntite || '—'} • ${r.province || '—'})</small></h3>
+          <button type="button" class="btn btn-eye btn-view-record" data-type="${r._src}" data-id="${r.id}" title="Ouvrir la fiche">👁️ Voir</button>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <tbody>
+              ${schema.fields.filter(f => f.computed || (r[f.key] !== undefined && r[f.key] !== "")).map(f => {
+                const val = f.key === "totalCulte" ? calcTotalCulte(r) : r[f.key];
+                const txt = f.type === 'number' ? fmt(val) : val;
+                return `<tr><th style="width:40%;background:#f1f5f9;color:#334155;">${f.label}</th><td>${f.computed ? `<strong>${txt}</strong>` : txt}</td></tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
   });
   $("#rapportDetaille").innerHTML = html;
+
+  $$(".btn-view-record", $("#rapportDetaille")).forEach(btn => {
+    btn.addEventListener("click", () => openEyeModal(btn.dataset.type, btn.dataset.id));
+  });
 }
 
 function exportBackupJSON() {
@@ -423,6 +604,7 @@ function importBackupJSON(file) {
       if (!confirm("Remplacer les données actuelles par celles de cette sauvegarde ?")) return;
       Store.data = {
         periode: Object.assign({ mois: "NOVEMBRE", annee: 2026, dateReference: "2026-11-19" }, importedData.periode || {}),
+        entites: Array.isArray(importedData.entites) ? importedData.entites : [],
         numerique: Array.isArray(importedData.numerique) ? importedData.numerique : [],
         diffusion: Array.isArray(importedData.diffusion) ? importedData.diffusion : [],
         diffusionSuite: Array.isArray(importedData.diffusionSuite) ? importedData.diffusionSuite : [],
@@ -490,7 +672,6 @@ function renderArchives() {
   if (filteredArch.length === 0) {
     libraryHtml = `<div class="report-block"><p style="text-align:center;">Aucune archive dans cette sélection.</p></div>`;
   } else {
-    // Regroupement en bibliothèque : Année -> Mois -> Documents
     const tree = {};
     filteredArch.forEach(r => {
       const y = String(r.archiveAnnee || new Date(r.archivedAt).getFullYear());
@@ -567,23 +748,48 @@ function renderArchives() {
 }
 
 function openFormForCurrentPage(editId) {
-  const map = { numerique: "numerique", diffusion: "diffusion", "diffusion-suite": "diffusionSuite" };
+  const map = {
+    entites: "entites",
+    numerique: "numerique",
+    diffusion: "diffusion",
+    "diffusion-suite": "diffusionSuite"
+  };
   const type = map[App.currentPage];
-  if (!type) return alert("Ouvrez d'abord la page Numérique, Diffusion ou Diffusion Suite.");
-  openForm(type, editId);
+  if (!type) return alert("Ouvrez Répertoire Entités, Numérique, Diffusion ou Diffusion Suite.");
+  const prefill = type === "entites" ? { province: App.selectedProvince || "Kasaï-Central" } : {};
+  openForm(type, editId, prefill);
 }
 
-function openForm(type, editId) {
-  App.currentFormType = type; App.editingId = editId;
-  const schema = SCHEMAS[type], record = editId ? Store.getByType(type).find(r => r.id === editId) || {} : {};
+function openForm(type, editId, prefill = {}) {
+  App.currentFormType = type;
+  App.editingId = editId;
+  App.viewOnlyMode = false;
+  $("#btnSave").style.display = "inline-flex";
+
+  const schema = SCHEMAS[type];
+  const existing = editId ? Store.getByType(type).find(r => r.id === editId) || {} : {};
+  const record = Object.assign({}, prefill, existing);
   $("#modalTitle").textContent = (editId ? "✏️ Modifier — " : "＋ Nouveau — ") + schema.title;
 
   const groups = {};
   schema.fields.forEach(f => { const g = f.group || "Général"; if (!groups[g]) groups[g] = []; groups[g].push(f); });
 
   let html = "";
+
+  // Sélecteur rapide depuis les entités enregistrées pour les rapports
+  if (type !== "entites" && !editId && (Store.data.entites || []).length > 0) {
+    html += `
+      <div class="form-group" style="grid-column: 1 / -1; background:#f0fdf4; padding:10px; border-radius:8px; border:1px solid #bbf7d0;">
+        <label for="quickSelectEntite">⚡ Choisir une entité déjà enregistrée (pré-remplissage auto)</label>
+        <select id="quickSelectEntite">
+          <option value="">-- Saisie manuelle ou choisir une entité --</option>
+          ${Store.data.entites.map(e => `<option value="${e.id}">${e.province} — ${e.denomination} (${e.typeEntite || "—"})</option>`).join("")}
+        </select>
+      </div>`;
+  }
+
   Object.keys(groups).forEach(g => {
-    html += `<h4 style="margin:12px 0 8px;color:#1e3a8a;font-size:14px !important;border-bottom:1px solid #cbd5e1;padding-bottom:4px;">${g}</h4>`;
+    html += `<h4 style="margin:12px 0 8px;color:#1e3a8a;font-size:14px !important;border-bottom:1px solid #cbd5e1;padding-bottom:4px;grid-column:1 / -1;">${g}</h4>`;
     groups[g].forEach(f => {
       let defaultVal = "";
       if (f.key === "dateRapport" && !editId && !record.dateRapport) {
@@ -602,6 +808,18 @@ function openForm(type, editId) {
   });
   $("#modalBody").innerHTML = html;
 
+  const quickSel = $("#quickSelectEntite");
+  if (quickSel) {
+    quickSel.addEventListener("change", () => {
+      const ent = (Store.data.entites || []).find(e => e.id === quickSel.value);
+      if (!ent) return;
+      if ($("#fld_province") && ent.province) $("#fld_province").value = ent.province;
+      if ($("#fld_typeEntite") && ent.typeEntite) $("#fld_typeEntite").value = ent.typeEntite;
+      if ($("#fld_denomination") && ent.denomination) $("#fld_denomination").value = ent.denomination;
+      if ($("#fld_responsable") && ent.responsable) $("#fld_responsable").value = ent.responsable;
+    });
+  }
+
   const updateCulteTotal = () => {
     const totalEl = $("#fld_totalCulte");
     if (!totalEl) return;
@@ -619,9 +837,16 @@ function openForm(type, editId) {
   $("#modal").classList.add("show");
 }
 
-function closeModal() { $("#modal").classList.remove("show"); App.editingId = null; App.currentFormType = null; }
+function closeModal() {
+  $("#modal").classList.remove("show");
+  $("#btnSave").style.display = "inline-flex";
+  App.viewOnlyMode = false;
+  App.editingId = null;
+  App.currentFormType = null;
+}
 
 function saveForm() {
+  if (App.viewOnlyMode) return closeModal();
   const type = App.currentFormType, schema = SCHEMAS[type], data = {};
   let valid = true;
   schema.fields.forEach(f => {
@@ -634,8 +859,12 @@ function saveForm() {
   if (type === "numerique" || type === "diffusion") {
     data.totalCulte = calcTotalCulte(data);
   }
-  data.periodeMois = Store.data.periode.mois;
-  data.periodeAnnee = Store.data.periode.annee;
+  if (type !== "entites") {
+    data.periodeMois = Store.data.periode.mois;
+    data.periodeAnnee = Store.data.periode.annee;
+  } else if (data.province) {
+    App.selectedProvince = data.province;
+  }
   if (App.editingId) Store.update(type, App.editingId, data); else Store.add(type, data);
   closeModal(); renderAll(); alert("✅ Enregistré.");
 }
