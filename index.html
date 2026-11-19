@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -11,7 +11,6 @@
 </head>
 <body>
 
-<!-- ÉCRAN D'ANIMATION D'ACCUEIL (3 SECONDES SUR FOND VERT) -->
 <div id="splashScreen" class="splash-screen" aria-hidden="true">
   <div class="splash-inner">
     <img src="./assets/images/logos/logo-emm.png" alt="Logo EMM RD Congo" class="splash-logo">
@@ -23,7 +22,6 @@
   </div>
 </div>
 
-<!-- ÉCRAN DE MOT DE PASSE AVANT LE TABLEAU DE BORD -->
 <div id="authGate" class="auth-gate">
   <div class="auth-card">
     <img src="./assets/images/logos/logo-emm.png" alt="Logo EMM RD Congo" class="auth-logo">
@@ -176,7 +174,7 @@
   const authSecondaryActions = document.getElementById("authSecondaryActions");
   const btnResetPass = document.getElementById("btnResetPass");
 
-  let mode = "login"; // "setup" | "login" | "change"
+  let mode = "login";
 
   function simpleHash(str) {
     let h = 2166136261;
@@ -270,7 +268,6 @@
     authPassInput.focus();
   });
 
-  // Animation d'accueil pendant 3 secondes (3000 ms)
   setTimeout(() => {
     if (splash) {
       splash.classList.add("fade-out");
