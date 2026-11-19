@@ -7,6 +7,7 @@ const App = {
   viewOnlyMode: false,
   searchTerm: "",
   selectedProvince: "Kasaï-Central",
+  syntheseProvinceFilter: "ALL",
   archiveYearFilter: "ALL",
   archiveMonthFilter: "ALL"
 };
@@ -61,6 +62,7 @@ function bindPeriodeControls() {
       Store.data.periode.mois = selMois.value;
       Store.save();
       updatePeriodeLabel();
+      renderAll();
     });
   }
 
@@ -71,6 +73,7 @@ function bindPeriodeControls() {
         Store.data.periode.annee = val;
         Store.save();
         updatePeriodeLabel();
+        renderAll();
       }
     });
   }
@@ -88,6 +91,7 @@ function bindPeriodeControls() {
       }
       Store.save();
       updatePeriodeLabel();
+      renderAll();
     });
   }
 }
@@ -503,13 +507,97 @@ function renderTable(type) {
 }
 
 function renderSynthese() {
-  const numRows = Store.data.numerique, diff = Store.data.diffusion;
+  const periodeMois = Store.data.periode?.mois || "";
+  const periodeAnnee = String(Store.data.periode?.annee || "");
+  const provFilter = App.syntheseProvinceFilter || "ALL";
+
+  const matchesPeriode = (r) => {
+    const mMatch = !periodeMois || !r.periodeMois || String(r.periodeMois).toUpperCase() === String(periodeMois).toUpperCase();
+    const yMatch = !periodeAnnee || !r.periodeAnnee || String(r.periodeAnnee) === periodeAnnee;
+    return mMatch && yMatch;
+  };
+
+  const matchesProv = (r) => provFilter === "ALL" || r.province === provFilter;
+
+  const numRows = (Store.data.numerique || []).filter(r => matchesPeriode(r) && matchesProv(r));
+  const diff = (Store.data.diffusion || []).filter(r => matchesPeriode(r) && matchesProv(r));
+  const suite = (Store.data.diffusionSuite || []).filter(r => matchesPeriode(r) && matchesProv(r));
+  const entites = (Store.data.entites || []).filter(matchesProv);
+
   const sumNum = (k) => numRows.reduce((s, r) => s + num(r[k]), 0);
   const sumDiff = (k) => diff.reduce((s, r) => s + num(r[k]), 0);
 
-  if (numRows.length === 0 && diff.length === 0) {
-     $("#syntheseContent").innerHTML = `<div class="report-block"><p style="text-align:center;padding:20px;">Aucune donnée saisie pour le moment.</p></div>`;
-     return;
+  // Complétude par province (entités répertoriées ayant au moins 1 rapport sur la période active)
+  const provincesToCheck = provFilter === "ALL" ? PROVINCES : [provFilter];
+  const completudeRows = provincesToCheck.map(p => {
+    const provEntites = (Store.data.entites || []).filter(e => e.province === p);
+    const totalEnt = provEntites.length;
+
+    const reportedNames = new Set(
+      [
+        ...(Store.data.numerique || []).filter(r => r.province === p && matchesPeriode(r)),
+        ...(Store.data.diffusion || []).filter(r => r.province === p && matchesPeriode(r)),
+        ...(Store.data.diffusionSuite || []).filter(r => r.province === p && matchesPeriode(r))
+      ]
+        .map(r => String(r.denomination || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    const submittedCount = totalEnt > 0
+      ? provEntites.filter(e => reportedNames.has(String(e.denomination || "").trim().toLowerCase())).length
+      : reportedNames.size;
+
+    const rate = totalEnt > 0 ? Math.round((submittedCount / totalEnt) * 100) : (submittedCount > 0 ? 100 : 0);
+    const statusLabel = totalEnt === 0
+      ? (submittedCount > 0 ? `${submittedCount} rapport(s) (0 entité répertoriée)` : "Aucune entité répertoriée")
+      : (submittedCount >= totalEnt ? "✅ Complet" : submittedCount > 0 ? "🟡 En cours" : "🔴 En attente");
+
+    return { province: p, totalEnt, submittedCount, rate, statusLabel };
+  }).filter(item => item.totalEnt > 0 || item.submittedCount > 0 || provFilter !== "ALL");
+
+  const completudeHtml = `
+    <div class="synth-section">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+        <h3 style="margin:0;">📌 Complétude des Rapports par Province (${periodeMois} ${periodeAnnee})</h3>
+        <label style="font-size:13px;font-weight:600;">Province :
+          <select id="syntheseProvSelect" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;">
+            <option value="ALL" ${provFilter === "ALL" ? "selected" : ""}>Toutes les provinces</option>
+            ${PROVINCES.map(p => `<option value="${p}" ${provFilter === p ? "selected" : ""}>${p}</option>`).join("")}
+          </select>
+        </label>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Province</th>
+              <th>Entités Répertoriées</th>
+              <th>Rapports Soumis</th>
+              <th>Taux</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${completudeRows.length === 0
+              ? `<tr><td colspan="5" style="text-align:center;padding:16px;">Aucune entité ni rapport enregistré pour cette sélection.</td></tr>`
+              : completudeRows.map(c => `
+                <tr>
+                  <td><strong>${c.province}</strong></td>
+                  <td class="num">${fmt(c.totalEnt)}</td>
+                  <td class="num"><strong>${fmt(c.submittedCount)}</strong></td>
+                  <td class="num">${c.rate}%</td>
+                  <td>${c.statusLabel}</td>
+                </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  if (numRows.length === 0 && diff.length === 0 && suite.length === 0 && entites.length === 0) {
+    $("#syntheseContent").innerHTML = completudeHtml + `<div class="report-block"><p style="text-align:center;padding:20px;">Aucune donnée saisie pour le moment.</p></div>`;
+    const sel = $("#syntheseProvSelect");
+    if (sel) sel.addEventListener("change", () => { App.syntheseProvinceFilter = sel.value; renderSynthese(); });
+    return;
   }
 
   const totalMembres = sumNum("culteMembres") + sumDiff("culteMembres");
@@ -518,7 +606,7 @@ function renderSynthese() {
   const totalCulte = totalMembres + totalSymp + totalNV;
   const confirmations = sumDiff("confGoshintai") + sumDiff("confOhikari") + sumDiff("confReinit") + sumDiff("confShoku") + sumDiff("confKannon");
 
-  $("#syntheseContent").innerHTML = `
+  $("#syntheseContent").innerHTML = completudeHtml + `
     <div class="synth-section"><h3>1. Indicateurs Clés (KPI)</h3><div class="table-wrapper"><table class="data-table">
       <thead><tr><th>Source</th><th>Membres</th><th>Sympathisants</th><th>NV</th><th>Total</th></tr></thead>
       <tbody>
@@ -528,12 +616,16 @@ function renderSynthese() {
       </tbody></table></div></div>
     <div class="synth-section"><h3>2. Bilan National</h3><div class="table-wrapper"><table class="data-table">
       <thead><tr><th>Rubrique</th><th>Total National</th></tr></thead><tbody>
+        <tr><td>Entités Répertoriées</td><td class="num">${fmt(entites.length)}</td></tr>
         <tr><td>Membres Baptisés</td><td class="num">${fmt(sumNum("baptises"))}</td></tr>
         <tr><td>Membres Actifs</td><td class="num">${fmt(sumNum("actifs")+sumDiff("membresActifs"))}</td></tr>
         <tr><td>Pratiques Johrei</td><td class="num">${fmt(sumNum("johrei"))}</td></tr>
         <tr><td>Fleurs Distribuées</td><td class="num">${fmt(sumNum("fleursDistrib")+sumDiff("fleursDistrib"))}</td></tr>
         <tr><td>Confirmations</td><td class="num">${fmt(confirmations)}</td></tr>
       </tbody></table></div></div>`;
+
+  const sel = $("#syntheseProvSelect");
+  if (sel) sel.addEventListener("change", () => { App.syntheseProvinceFilter = sel.value; renderSynthese(); });
 }
 
 function renderRapportGlobal() {
