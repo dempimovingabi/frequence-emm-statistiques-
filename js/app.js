@@ -220,12 +220,87 @@ function renderRapportDetaille() {
   $("#rapportDetaille").innerHTML = html;
 }
 
+function exportBackupJSON() {
+  const payload = {
+    app: "EMM RD Congo — Gestion Nationale",
+    exportedAt: new Date().toISOString(),
+    data: Store.data
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const mois = String(Store.data.periode?.mois || "periode").toLowerCase().replace(/\s+/g, "-");
+  const annee = Store.data.periode?.annee || "";
+  a.href = url;
+  a.download = `emm-rdc-sauvegarde-${mois}-${annee}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importBackupJSON(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      const importedData = parsed && parsed.data ? parsed.data : parsed;
+      if (!importedData || typeof importedData !== "object") {
+        return alert("Fichier de sauvegarde invalide.");
+      }
+      if (!confirm("Remplacer les données actuelles par celles de cette sauvegarde ?")) return;
+      Store.data = {
+        periode: importedData.periode || Store.data.periode,
+        numerique: Array.isArray(importedData.numerique) ? importedData.numerique : [],
+        diffusion: Array.isArray(importedData.diffusion) ? importedData.diffusion : [],
+        diffusionSuite: Array.isArray(importedData.diffusionSuite) ? importedData.diffusionSuite : [],
+        archives: Array.isArray(importedData.archives) ? importedData.archives : []
+      };
+      Store.save();
+      updatePeriodeLabel();
+      renderAll();
+      alert("✅ Sauvegarde restaurée avec succès.");
+    } catch (err) {
+      alert("Impossible de lire le fichier JSON.");
+    }
+  };
+  reader.readAsText(file);
+}
+
 function renderArchives() {
   const arch = Store.data.archives;
-  if (arch.length === 0) { $("#archivesList").innerHTML = `<div class="report-block"><p style="text-align:center;">Aucune archive.</p></div>`; return; }
-  let html = `<div class="report-block"><h3>🗄️ Archives</h3><div class="table-wrapper"><table class="data-table"><thead><tr><th>Source</th><th>Dénomination</th><th>Province</th><th>Date</th></tr></thead><tbody>`;
-  arch.forEach(r => { html += `<tr><td>${r.originalType}</td><td>${r.denomination || '—'}</td><td>${r.province || '—'}</td><td>${new Date(r.archivedAt).toLocaleString('fr-FR')}</td></tr>`; });
-  $("#archivesList").innerHTML = html + `</tbody></table></div></div>`;
+  const backupBar = `
+    <div class="report-block" style="margin-bottom:16px;">
+      <h3>💾 Sauvegarde & Restauration des Données</h3>
+      <p style="margin:6px 0 12px;color:#475569;font-size:13px;">Exportez vos données en fichier <strong>.json</strong> pour les archiver ou les transférer, et importez un fichier de sauvegarde pour les restaurer.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;">
+        <button type="button" class="btn btn-primary" id="btnExportJSON">⬇️ Exporter (.json)</button>
+        <label class="btn btn-info" style="cursor:pointer;margin:0;">
+          ⬆️ Importer (.json)
+          <input type="file" id="inputImportJSON" accept=".json,application/json" style="display:none;">
+        </label>
+      </div>
+    </div>`;
+
+  let listHtml = "";
+  if (arch.length === 0) {
+    listHtml = `<div class="report-block"><p style="text-align:center;">Aucune archive.</p></div>`;
+  } else {
+    listHtml = `<div class="report-block"><h3>🗄️ Éléments Archivés</h3><div class="table-wrapper"><table class="data-table"><thead><tr><th>Source</th><th>Dénomination</th><th>Province</th><th>Date</th></tr></thead><tbody>`;
+    arch.forEach(r => { listHtml += `<tr><td>${r.originalType}</td><td>${r.denomination || '—'}</td><td>${r.province || '—'}</td><td>${new Date(r.archivedAt).toLocaleString('fr-FR')}</td></tr>`; });
+    listHtml += `</tbody></table></div></div>`;
+  }
+
+  $("#archivesList").innerHTML = backupBar + listHtml;
+
+  const btnExp = $("#btnExportJSON");
+  const inpImp = $("#inputImportJSON");
+  if (btnExp) btnExp.addEventListener("click", exportBackupJSON);
+  if (inpImp) inpImp.addEventListener("change", (e) => {
+    importBackupJSON(e.target.files[0]);
+    e.target.value = "";
+  });
 }
 
 function openFormForCurrentPage(editId) {
@@ -258,7 +333,6 @@ function openForm(type, editId) {
   });
   $("#modalBody").innerHTML = html;
 
-  // Mise à jour automatique en direct du total Culte Mensuel
   const updateCulteTotal = () => {
     const totalEl = $("#fld_totalCulte");
     if (!totalEl) return;
@@ -303,4 +377,3 @@ function bindPrintOptions() {
   }
   fontSel.addEventListener("change", apply); sizeSel.addEventListener("change", apply); apply();
 }
-
