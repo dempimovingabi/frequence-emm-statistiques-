@@ -20,6 +20,17 @@ const MOIS_LISTE = [
 ];
 
 const SCHEMAS = {
+  entites: {
+    title: "Répertoire d'Entité par Province",
+    fields: [
+      { key: "province", label: "Province", type: "select", options: PROVINCES, required: true, group: "Localisation" },
+      { key: "typeEntite", label: "Type d'entité", type: "select", options: TYPES_ENTITE, required: true, group: "Identification" },
+      { key: "denomination", label: "Dénomination de l'entité", type: "text", required: true, group: "Identification" },
+      { key: "responsable", label: "Responsable", type: "text", required: true, group: "Identification" },
+      { key: "telephone", label: "Téléphone / Contact", type: "text", group: "Contact" },
+      { key: "observations", label: "Observations / Adresse", type: "textarea", group: "Contact" }
+    ]
+  },
   numerique: {
     title: "Rapport Numérique",
     fields: [
@@ -78,6 +89,7 @@ const SCHEMAS = {
 
 const DEFAULT_DATA = {
   periode: { mois: "NOVEMBRE", annee: 2026, dateReference: "2026-11-19" },
+  entites: [],
   numerique: [],
   diffusion: [],
   diffusionSuite: [],
@@ -94,6 +106,7 @@ const Store = {
     } catch (e) {
       this.data = JSON.parse(JSON.stringify(DEFAULT_DATA));
     }
+    this.data.entites = this.data.entites || [];
     this.data.numerique = this.data.numerique || [];
     this.data.diffusion = this.data.diffusion || [];
     this.data.diffusionSuite = this.data.diffusionSuite || [];
