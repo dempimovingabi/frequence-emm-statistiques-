@@ -1,4 +1,14 @@
-const App = { currentPage: "dashboard", selectedRowId: null, selectedType: null, editingId: null, currentFormType: null, searchTerm: "" };
+const App = {
+  currentPage: "dashboard",
+  selectedRowId: null,
+  selectedType: null,
+  editingId: null,
+  currentFormType: null,
+  searchTerm: "",
+  archiveYearFilter: "ALL",
+  archiveMonthFilter: "ALL"
+};
+
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 function fmt(n) { if (n === undefined || n === null || n === "") return "0"; const numVal = Number(n); return isNaN(numVal) ? n : numVal.toLocaleString("fr-FR"); }
@@ -7,18 +17,77 @@ function calcTotalCulte(r) { return num(r.culteMembres) + num(r.culteSymp) + num
 
 document.addEventListener("DOMContentLoaded", () => {
   Store.load();
+  syncPeriodeControls();
   updatePeriodeLabel();
   updateNetStatus();
   bindNavigation();
+  bindPeriodeControls();
   bindActions();
   bindPrintOptions();
   renderAll();
   goToPage("dashboard");
 });
 
+function syncPeriodeControls() {
+  const selMois = $("#selectMois");
+  const inpAnnee = $("#inputAnnee");
+  const inpDate = $("#inputDateRef");
+  if (selMois) selMois.value = Store.data.periode.mois || "NOVEMBRE";
+  if (inpAnnee) inpAnnee.value = Store.data.periode.annee || 2026;
+  if (inpDate) inpDate.value = Store.data.periode.dateReference || "";
+}
+
 function updatePeriodeLabel() {
   const el = $("#moisAnnee");
-  if (el) el.textContent = `${Store.data.periode.mois} ${Store.data.periode.annee}`;
+  const p = Store.data.periode || {};
+  const datePart = p.dateReference ? ` • ${p.dateReference}` : "";
+  if (el) el.textContent = `${p.mois || ""} ${p.annee || ""}${datePart}`;
+
+  const printMeta = $("#printMetaLine");
+  if (printMeta) {
+    printMeta.textContent = `Période : ${p.mois || ""} ${p.annee || ""} — Date de référence : ${p.dateReference || "—"}`;
+  }
+}
+
+function bindPeriodeControls() {
+  const selMois = $("#selectMois");
+  const inpAnnee = $("#inputAnnee");
+  const inpDate = $("#inputDateRef");
+
+  if (selMois) {
+    selMois.addEventListener("change", () => {
+      Store.data.periode.mois = selMois.value;
+      Store.save();
+      updatePeriodeLabel();
+    });
+  }
+
+  if (inpAnnee) {
+    inpAnnee.addEventListener("change", () => {
+      const val = Number(inpAnnee.value);
+      if (!isNaN(val) && val >= 2000 && val <= 2100) {
+        Store.data.periode.annee = val;
+        Store.save();
+        updatePeriodeLabel();
+      }
+    });
+  }
+
+  if (inpDate) {
+    inpDate.addEventListener("change", () => {
+      Store.data.periode.dateReference = inpDate.value;
+      if (inpDate.value) {
+        const d = new Date(inpDate.value + "T12:00:00");
+        if (!isNaN(d.getTime())) {
+          Store.data.periode.annee = d.getFullYear();
+          Store.data.periode.mois = MOIS_LISTE[d.getMonth()];
+          syncPeriodeControls();
+        }
+      }
+      Store.save();
+      updatePeriodeLabel();
+    });
+  }
 }
 
 function updateNetStatus() {
@@ -51,28 +120,21 @@ function goToPage(page) {
 
 function bindActions() {
   $("#searchInput").addEventListener("input", (e) => { App.searchTerm = e.target.value.toLowerCase(); renderAll(); });
+  const btnClear = $("#btnClearSearch");
+  if (btnClear) {
+    btnClear.addEventListener("click", () => {
+      App.searchTerm = "";
+      $("#searchInput").value = "";
+      renderAll();
+    });
+  }
   $("#btnNouveau").addEventListener("click", () => openFormForCurrentPage(null));
   $("#btnModifier").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); openFormForCurrentPage(App.selectedRowId); });
   $("#btnSupprimer").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); if (!confirm("Supprimer ?")) return; Store.remove(App.selectedType, App.selectedRowId); clearSelection(); renderAll(); });
-  $("#btnArchiver").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); if (!confirm("Archiver ?")) return; Store.archive(App.selectedType, App.selectedRowId); clearSelection(); renderAll(); });
+  $("#btnArchiver").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); if (!confirm("Archiver dans la bibliothèque ?")) return; Store.archive(App.selectedType, App.selectedRowId); clearSelection(); renderAll(); });
   $("#btnCloseModal").addEventListener("click", closeModal);
   $("#btnCancel").addEventListener("click", closeModal);
   $("#btnSave").addEventListener("click", saveForm);
-
-  const btnPeriode = $("#btnEditPeriode");
-  if (btnPeriode) {
-    btnPeriode.addEventListener("click", () => {
-      const nouveauMois = prompt("Mois de la période (ex. NOVEMBRE, DÉCEMBRE) :", Store.data.periode.mois || "");
-      if (nouveauMois === null) return;
-      const nouvelleAnnee = prompt("Année de la période (ex. 2026) :", Store.data.periode.annee || "2026");
-      if (nouvelleAnnee === null) return;
-      if (nouveauMois.trim()) Store.data.periode.mois = nouveauMois.trim().toUpperCase();
-      if (nouvelleAnnee.trim() && !isNaN(Number(nouvelleAnnee.trim()))) Store.data.periode.annee = Number(nouvelleAnnee.trim());
-      Store.save();
-      updatePeriodeLabel();
-      alert("✅ Période mise à jour.");
-    });
-  }
 }
 function clearSelection() { App.selectedRowId = null; App.selectedType = null; }
 
@@ -88,13 +150,13 @@ function renderGraphiques() {
   const search = App.searchTerm;
   const items = [
     ...Store.data.numerique.map(r => ({
-      label: `${r.denomination || "(Sans nom)"} — ${r.province || "—"} (Numérique)`,
+      label: `${r.denomination || "(Sans nom)"} — ${r.typeEntite || "—"} (${r.province || "—"}) [Numérique]`,
       m: num(r.culteMembres),
       s: num(r.culteSymp),
       nv: num(r.culteNV)
     })),
     ...Store.data.diffusion.map(r => ({
-      label: `${r.denomination || "(Sans nom)"} — ${r.province || "—"} (Diffusion)`,
+      label: `${r.denomination || "(Sans nom)"} — ${r.typeEntite || "—"} (${r.province || "—"}) [Diffusion]`,
       m: num(r.culteMembres),
       s: num(r.culteSymp),
       nv: num(r.culteNV)
@@ -216,26 +278,27 @@ function renderTable(type) {
   const table = $("#" + containerId); if (!table) return;
 
   let cols = type === "numerique" ? [
-      { key: "province", label: "Province" }, { key: "typeEntite", label: "Type" }, { key: "denomination", label: "Dénomination" },
-      { key: "responsable", label: "Responsable" }, { key: "baptises", label: "Baptisés", num: true }, { key: "actifs", label: "Actifs", num: true },
-      { key: "culteMembres", label: "Culte M", num: true }, { key: "culteSymp", label: "Culte S", num: true }, { key: "culteNV", label: "Culte NV", num: true },
-      { key: "totalCulte", label: "Total Culte", num: true, bold: true },
+      { key: "dateRapport", label: "Date" }, { key: "province", label: "Province" }, { key: "typeEntite", label: "Type d'entité" },
+      { key: "denomination", label: "Dénomination" }, { key: "responsable", label: "Responsable" }, { key: "baptises", label: "Baptisés", num: true },
+      { key: "actifs", label: "Actifs", num: true }, { key: "culteMembres", label: "Culte M", num: true }, { key: "culteSymp", label: "Culte S", num: true },
+      { key: "culteNV", label: "Culte NV", num: true }, { key: "totalCulte", label: "Total Culte", num: true, bold: true },
       { key: "johrei", label: "Johrei", num: true }, { key: "fleursDistrib", label: "Fleurs", num: true }
     ] : type === "diffusion" ? [
-      { key: "province", label: "Province" }, { key: "denomination", label: "Dénomination" }, { key: "responsable", label: "Responsable" },
-      { key: "membresActifs", label: "Actifs", num: true }, { key: "sympathisants", label: "Symp.", num: true }, { key: "culteMembres", label: "Culte M", num: true },
-      { key: "culteSymp", label: "Culte S", num: true }, { key: "culteNV", label: "Culte NV", num: true },
-      { key: "totalCulte", label: "Total Culte", num: true, bold: true },
+      { key: "dateRapport", label: "Date" }, { key: "province", label: "Province" }, { key: "typeEntite", label: "Type d'entité" },
+      { key: "denomination", label: "Dénomination" }, { key: "responsable", label: "Responsable" }, { key: "membresActifs", label: "Actifs", num: true },
+      { key: "sympathisants", label: "Symp.", num: true }, { key: "culteMembres", label: "Culte M", num: true }, { key: "culteSymp", label: "Culte S", num: true },
+      { key: "culteNV", label: "Culte NV", num: true }, { key: "totalCulte", label: "Total Culte", num: true, bold: true },
       { key: "fleursDistrib", label: "Fleurs", num: true }
     ] : [
-      { key: "province", label: "Province" }, { key: "denomination", label: "Dénomination" }, { key: "responsable", label: "Responsable" },
-      { key: "campagnesNettoyage", label: "Nettoyages", num: true }, { key: "fleursDistrib", label: "Fleurs", num: true }, { key: "coursFleurs", label: "Cours", num: true }, { key: "themes", label: "Thèmes" }
+      { key: "dateRapport", label: "Date" }, { key: "province", label: "Province" }, { key: "typeEntite", label: "Type d'entité" },
+      { key: "denomination", label: "Dénomination" }, { key: "responsable", label: "Responsable" }, { key: "campagnesNettoyage", label: "Nettoyages", num: true },
+      { key: "fleursDistrib", label: "Fleurs", num: true }, { key: "coursFleurs", label: "Cours", num: true }, { key: "themes", label: "Thèmes" }
     ];
 
   table.innerHTML = `
     <thead><tr><th>#</th>${cols.map(c => `<th>${c.label}</th>`).join("")}</tr></thead>
     <tbody>
-      ${filtered.length === 0 ? `<tr><td colspan="${cols.length + 1}" style="text-align:center;padding:20px;">Aucune donnée.</td></tr>` : ""}
+      ${filtered.length === 0 ? `<tr><td colspan="${cols.length + 1}" style="text-align:center;padding:20px;">Aucune donnée (${filtered.length} entrée).</td></tr>` : ""}
       ${filtered.map((r, i) => {
         const valFor = (c) => c.key === "totalCulte" ? calcTotalCulte(r) : r[c.key];
         return `
@@ -317,7 +380,7 @@ function renderRapportDetaille() {
   let html = "";
   all.forEach(r => {
     const schema = SCHEMAS[r._src];
-    html += `<div class="report-block"><h3>${schema.title} — ${r.denomination || "(sans nom)"} <small>(${r.province || '—'})</small></h3><div class="table-wrapper"><table class="data-table"><tbody>
+    html += `<div class="report-block"><h3>${schema.title} — ${r.denomination || "(sans nom)"} <small>(${r.typeEntite || '—'} • ${r.province || '—'})</small></h3><div class="table-wrapper"><table class="data-table"><tbody>
       ${schema.fields.filter(f => f.computed || (r[f.key] !== undefined && r[f.key] !== "")).map(f => {
         const val = f.key === "totalCulte" ? calcTotalCulte(r) : r[f.key];
         const txt = f.type === 'number' ? fmt(val) : val;
@@ -359,13 +422,14 @@ function importBackupJSON(file) {
       }
       if (!confirm("Remplacer les données actuelles par celles de cette sauvegarde ?")) return;
       Store.data = {
-        periode: importedData.periode || Store.data.periode,
+        periode: Object.assign({ mois: "NOVEMBRE", annee: 2026, dateReference: "2026-11-19" }, importedData.periode || {}),
         numerique: Array.isArray(importedData.numerique) ? importedData.numerique : [],
         diffusion: Array.isArray(importedData.diffusion) ? importedData.diffusion : [],
         diffusionSuite: Array.isArray(importedData.diffusionSuite) ? importedData.diffusionSuite : [],
         archives: Array.isArray(importedData.archives) ? importedData.archives : []
       };
       Store.save();
+      syncPeriodeControls();
       updatePeriodeLabel();
       renderAll();
       alert("✅ Sauvegarde restaurée avec succès.");
@@ -377,7 +441,19 @@ function importBackupJSON(file) {
 }
 
 function renderArchives() {
-  const arch = Store.data.archives;
+  const archAll = Store.data.archives || [];
+  const years = Array.from(new Set(archAll.map(r => String(r.archiveAnnee || new Date(r.archivedAt).getFullYear())))).sort((a, b) => b.localeCompare(a));
+  const months = Array.from(new Set(archAll.map(r => String(r.archiveMois || MOIS_LISTE[new Date(r.archivedAt).getMonth()] || "").toUpperCase()).filter(Boolean)));
+
+  const filteredArch = archAll.filter(r => {
+    const y = String(r.archiveAnnee || new Date(r.archivedAt).getFullYear());
+    const m = String(r.archiveMois || MOIS_LISTE[new Date(r.archivedAt).getMonth()] || "").toUpperCase();
+    const matchY = App.archiveYearFilter === "ALL" || y === App.archiveYearFilter;
+    const matchM = App.archiveMonthFilter === "ALL" || m === App.archiveMonthFilter;
+    const matchS = !App.searchTerm || Object.values(r).some(v => String(v).toLowerCase().includes(App.searchTerm));
+    return matchY && matchM && matchS;
+  });
+
   const backupBar = `
     <div class="report-block" style="margin-bottom:16px;">
       <h3>💾 Sauvegarde & Restauration des Données</h3>
@@ -391,23 +467,102 @@ function renderArchives() {
       </div>
     </div>`;
 
-  let listHtml = "";
-  if (arch.length === 0) {
-    listHtml = `<div class="report-block"><p style="text-align:center;">Aucune archive.</p></div>`;
+  const filterBar = `
+    <div class="report-block" style="margin-bottom:16px;">
+      <h3>📚 Bibliothèque d'Archives (Classée par Année & Mois)</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:8px;">
+        <label style="font-size:13px;font-weight:600;">Année :
+          <select id="archiveFilterYear" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;">
+            <option value="ALL">Toutes les années</option>
+            ${years.map(y => `<option value="${y}" ${App.archiveYearFilter === y ? "selected" : ""}>${y}</option>`).join("")}
+          </select>
+        </label>
+        <label style="font-size:13px;font-weight:600;">Mois :
+          <select id="archiveFilterMonth" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;">
+            <option value="ALL">Tous les mois</option>
+            ${months.map(m => `<option value="${m}" ${App.archiveMonthFilter === m ? "selected" : ""}>${m}</option>`).join("")}
+          </select>
+        </label>
+      </div>
+    </div>`;
+
+  let libraryHtml = "";
+  if (filteredArch.length === 0) {
+    libraryHtml = `<div class="report-block"><p style="text-align:center;">Aucune archive dans cette sélection.</p></div>`;
   } else {
-    listHtml = `<div class="report-block"><h3>🗄️ Éléments Archivés</h3><div class="table-wrapper"><table class="data-table"><thead><tr><th>Source</th><th>Dénomination</th><th>Province</th><th>Date</th></tr></thead><tbody>`;
-    arch.forEach(r => { listHtml += `<tr><td>${r.originalType}</td><td>${r.denomination || '—'}</td><td>${r.province || '—'}</td><td>${new Date(r.archivedAt).toLocaleString('fr-FR')}</td></tr>`; });
-    listHtml += `</tbody></table></div></div>`;
+    // Regroupement en bibliothèque : Année -> Mois -> Documents
+    const tree = {};
+    filteredArch.forEach(r => {
+      const y = String(r.archiveAnnee || new Date(r.archivedAt).getFullYear());
+      const m = String(r.archiveMois || MOIS_LISTE[new Date(r.archivedAt).getMonth()] || "AUTRE").toUpperCase();
+      if (!tree[y]) tree[y] = {};
+      if (!tree[y][m]) tree[y][m] = [];
+      tree[y][m].push(r);
+    });
+
+    Object.keys(tree).sort((a, b) => b.localeCompare(a)).forEach(year => {
+      const monthsObj = tree[year];
+      const monthBlocks = Object.keys(monthsObj).map(month => {
+        const docs = monthsObj[month];
+        return `
+          <div style="margin:10px 0 14px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+            <div style="font-weight:700;color:#15803d;margin-bottom:8px;">📁 ${month} ${year} (${docs.length})</div>
+            <div class="table-wrapper" style="margin-bottom:0;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Type rapport</th>
+                    <th>Type d'entité</th>
+                    <th>Dénomination</th>
+                    <th>Province</th>
+                    <th>Date</th>
+                    <th>Archivé le</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${docs.map(r => `
+                    <tr>
+                      <td>${r.originalType || '—'}</td>
+                      <td>${r.typeEntite || '—'}</td>
+                      <td><strong>${r.denomination || '—'}</strong></td>
+                      <td>${r.province || '—'}</td>
+                      <td>${r.dateReference || r.dateRapport || '—'}</td>
+                      <td>${r.archivedAt ? new Date(r.archivedAt).toLocaleString('fr-FR') : '—'}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+      }).join("");
+
+      libraryHtml += `
+        <div class="report-block">
+          <h3>🗂️ Année ${year}</h3>
+          ${monthBlocks}
+        </div>`;
+    });
   }
 
-  $("#archivesList").innerHTML = backupBar + listHtml;
+  $("#archivesList").innerHTML = backupBar + filterBar + libraryHtml;
 
   const btnExp = $("#btnExportJSON");
   const inpImp = $("#inputImportJSON");
+  const selY = $("#archiveFilterYear");
+  const selM = $("#archiveFilterMonth");
+
   if (btnExp) btnExp.addEventListener("click", exportBackupJSON);
   if (inpImp) inpImp.addEventListener("change", (e) => {
     importBackupJSON(e.target.files[0]);
     e.target.value = "";
+  });
+  if (selY) selY.addEventListener("change", () => {
+    App.archiveYearFilter = selY.value;
+    renderArchives();
+  });
+  if (selM) selM.addEventListener("change", () => {
+    App.archiveMonthFilter = selM.value;
+    renderArchives();
   });
 }
 
@@ -430,7 +585,13 @@ function openForm(type, editId) {
   Object.keys(groups).forEach(g => {
     html += `<h4 style="margin:12px 0 8px;color:#1e3a8a;font-size:14px !important;border-bottom:1px solid #cbd5e1;padding-bottom:4px;">${g}</h4>`;
     groups[g].forEach(f => {
-      const val = f.key === "totalCulte" ? calcTotalCulte(record) : (record[f.key] !== undefined ? record[f.key] : "");
+      let defaultVal = "";
+      if (f.key === "dateRapport" && !editId && !record.dateRapport) {
+        defaultVal = Store.data.periode.dateReference || "";
+      }
+      const val = f.key === "totalCulte"
+        ? calcTotalCulte(record)
+        : (record[f.key] !== undefined ? record[f.key] : defaultVal);
       html += `<div class="form-group"><label>${f.label}${f.required ? " *" : ""}</label>`;
       if (f.type === "select") html += `<select id="fld_${f.key}">${f.options.map(o => `<option value="${o}" ${val === o ? "selected" : ""}>${o}</option>`).join("")}</select>`;
       else if (f.type === "textarea") html += `<textarea id="fld_${f.key}" rows="2">${val}</textarea>`;
@@ -473,6 +634,8 @@ function saveForm() {
   if (type === "numerique" || type === "diffusion") {
     data.totalCulte = calcTotalCulte(data);
   }
+  data.periodeMois = Store.data.periode.mois;
+  data.periodeAnnee = Store.data.periode.annee;
   if (App.editingId) Store.update(type, App.editingId, data); else Store.add(type, data);
   closeModal(); renderAll(); alert("✅ Enregistré.");
 }
