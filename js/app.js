@@ -100,7 +100,7 @@ function updateNetStatus() {
   const el = $("#netStatus");
   if (!el) return;
   const online = navigator.onLine;
-  el.textContent = online ? "● En ligne (Hors-ligne prêt)" : "● Hors connexion (Mode local)";
+  el.textContent = online ? "● En ligne (PWA prête)" : "● Hors connexion (Mode local)";
   el.style.color = online ? "#4ade80" : "#fbbf24";
 }
 
@@ -134,7 +134,7 @@ function duplicateSelectedRecord() {
 
   const resetNumbers = confirm(
     `Dupliquer "${original.denomination || "cet élément"}" pour ${Store.data.periode.mois} ${Store.data.periode.annee} ?\n\n` +
-    `• Cliquez sur OK pour garder les effectifs de base (Baptisés/Actifs) et remettre les fréquences du culte à 0.\n` +
+    `• Cliquez sur OK pour garder les effectifs de base et remettre les fréquences du culte à 0.\n` +
     `• Cliquez sur Annuler pour annuler la duplication.`
   );
   if (!resetNumbers) return;
@@ -158,6 +158,53 @@ function duplicateSelectedRecord() {
   openForm(App.selectedType, created.id);
 }
 
+function exportCSVForCurrentView() {
+  const typeMap = {
+    entites: "entites",
+    numerique: "numerique",
+    diffusion: "diffusion",
+    "diffusion-suite": "diffusionSuite"
+  };
+  const targetType = typeMap[App.currentPage] || "numerique";
+  const schema = SCHEMAS[targetType];
+  const rows = (Store.getByType(targetType) || []).filter(r =>
+    !App.searchTerm || Object.values(r).some(v => String(v).toLowerCase().includes(App.searchTerm))
+  );
+
+  if (!rows.length) {
+    return alert(`Aucune donnée à exporter pour "${schema.title}".`);
+  }
+
+  const escapeCsv = (val) => {
+    const s = String(val === undefined || val === null ? "" : val).replace(/"/g, '""');
+    return `"${s}"`;
+  };
+
+  const headers = schema.fields.map(f => escapeCsv(f.label));
+  const lines = [headers.join(";")];
+
+  rows.forEach(r => {
+    const line = schema.fields.map(f => {
+      const val = f.key === "totalCulte" ? calcTotalCulte(r) : r[f.key];
+      return escapeCsv(val);
+    });
+    lines.push(line.join(";"));
+  });
+
+  const csvContent = "\uFEFF" + lines.join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const mois = String(Store.data.periode?.mois || "periode").toLowerCase().replace(/\s+/g, "-");
+  const annee = Store.data.periode?.annee || "";
+  a.href = url;
+  a.download = `emm-rdc-${targetType}-${mois}-${annee}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function bindActions() {
   $("#searchInput").addEventListener("input", (e) => { App.searchTerm = e.target.value.toLowerCase(); renderAll(); });
   const btnClear = $("#btnClearSearch");
@@ -174,6 +221,21 @@ function bindActions() {
   if (btnDup) btnDup.addEventListener("click", duplicateSelectedRecord);
   $("#btnSupprimer").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); if (!confirm("Supprimer ?")) return; Store.remove(App.selectedType, App.selectedRowId); clearSelection(); renderAll(); });
   $("#btnArchiver").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); if (!confirm("Archiver dans la bibliothèque ?")) return; Store.archive(App.selectedType, App.selectedRowId); clearSelection(); renderAll(); });
+
+  const actionBar = $(".action-bar");
+  if (actionBar && !$("#btnExportCSV")) {
+    const btnCsv = document.createElement("button");
+    btnCsv.type = "button";
+    btnCsv.id = "btnExportCSV";
+    btnCsv.className = "btn btn-info";
+    btnCsv.textContent = "📊 CSV";
+    btnCsv.title = "Exporter le tableau actif au format CSV (Excel)";
+    btnCsv.addEventListener("click", exportCSVForCurrentView);
+    const btnPdf = $("#btnPDF");
+    if (btnPdf) actionBar.insertBefore(btnCsv, btnPdf);
+    else actionBar.appendChild(btnCsv);
+  }
+
   $("#btnCloseModal").addEventListener("click", closeModal);
   $("#btnCancel").addEventListener("click", closeModal);
   $("#btnSave").addEventListener("click", saveForm);
@@ -191,6 +253,23 @@ function renderAll() {
   renderRapportGlobal();
   renderRapportDetaille();
   renderArchives();
+  renderStorageFooterNote();
+}
+
+function renderStorageFooterNote() {
+  const footer = $(".sidebar-footer");
+  if (!footer) return;
+  let note = $("#storageSummaryNote", footer);
+  if (!note) {
+    note = document.createElement("small");
+    note.id = "storageSummaryNote";
+    note.style.color = "#94a3b8";
+    footer.insertBefore(note, footer.lastElementChild);
+  }
+  const entCount = (Store.data.entites || []).length;
+  const repCount = (Store.data.numerique || []).length + (Store.data.diffusion || []).length + (Store.data.diffusionSuite || []).length;
+  const archCount = (Store.data.archives || []).length;
+  note.textContent = `${entCount} entité(s) • ${repCount} rapport(s) • ${archCount} archive(s)`;
 }
 
 function renderEntitesPage() {
@@ -527,7 +606,6 @@ function renderSynthese() {
   const sumNum = (k) => numRows.reduce((s, r) => s + num(r[k]), 0);
   const sumDiff = (k) => diff.reduce((s, r) => s + num(r[k]), 0);
 
-  // Complétude par province (entités répertoriées ayant au moins 1 rapport sur la période active)
   const provincesToCheck = provFilter === "ALL" ? PROVINCES : [provFilter];
   const completudeRows = provincesToCheck.map(p => {
     const provEntites = (Store.data.entites || []).filter(e => e.province === p);
@@ -750,24 +828,52 @@ function importBackupJSON(file) {
   reader.readAsText(file);
 }
 
+function restoreArchivedItem(indexInArchives) {
+  const arch = Store.data.archives || [];
+  const item = arch[indexInArchives];
+  if (!item) return;
+  const targetType = item.originalType && Store.data[item.originalType] ? item.originalType : "numerique";
+  const restored = Object.assign({}, item);
+  delete restored.archivedAt;
+  delete restored.originalType;
+  delete restored.archiveAnnee;
+  delete restored.archiveMois;
+  Store.data[targetType].push(restored);
+  Store.data.archives.splice(indexInArchives, 1);
+  Store.save();
+  renderAll();
+  alert("✅ Élément restauré.");
+}
+
+function deleteArchivedItem(indexInArchives) {
+  const arch = Store.data.archives || [];
+  if (!arch[indexInArchives]) return;
+  if (!confirm("Supprimer définitivement cette archive ?")) return;
+  Store.data.archives.splice(indexInArchives, 1);
+  Store.save();
+  renderAll();
+}
+
 function renderArchives() {
   const archAll = Store.data.archives || [];
   const years = Array.from(new Set(archAll.map(r => String(r.archiveAnnee || new Date(r.archivedAt).getFullYear())))).sort((a, b) => b.localeCompare(a));
   const months = Array.from(new Set(archAll.map(r => String(r.archiveMois || MOIS_LISTE[new Date(r.archivedAt).getMonth()] || "").toUpperCase()).filter(Boolean)));
 
-  const filteredArch = archAll.filter(r => {
-    const y = String(r.archiveAnnee || new Date(r.archivedAt).getFullYear());
-    const m = String(r.archiveMois || MOIS_LISTE[new Date(r.archivedAt).getMonth()] || "").toUpperCase();
-    const matchY = App.archiveYearFilter === "ALL" || y === App.archiveYearFilter;
-    const matchM = App.archiveMonthFilter === "ALL" || m === App.archiveMonthFilter;
-    const matchS = !App.searchTerm || Object.values(r).some(v => String(v).toLowerCase().includes(App.searchTerm));
-    return matchY && matchM && matchS;
-  });
+  const filteredArch = archAll
+    .map((r, realIdx) => ({ r, realIdx }))
+    .filter(({ r }) => {
+      const y = String(r.archiveAnnee || new Date(r.archivedAt).getFullYear());
+      const m = String(r.archiveMois || MOIS_LISTE[new Date(r.archivedAt).getMonth()] || "").toUpperCase();
+      const matchY = App.archiveYearFilter === "ALL" || y === App.archiveYearFilter;
+      const matchM = App.archiveMonthFilter === "ALL" || m === App.archiveMonthFilter;
+      const matchS = !App.searchTerm || Object.values(r).some(v => String(v).toLowerCase().includes(App.searchTerm));
+      return matchY && matchM && matchS;
+    });
 
   const backupBar = `
     <div class="report-block" style="margin-bottom:16px;">
       <h3>💾 Sauvegarde & Restauration des Données</h3>
-      <p style="margin:6px 0 12px;color:#475569;font-size:13px;">Exportez vos données en fichier <strong>.json</strong> pour les archiver ou les transférer, et importez un fichier de sauvegarde pour les restaurer.</p>
+      <p style="margin:6px 0 12px;color:#475569;font-size:13px;">Pensez à exporter régulièrement une copie <strong>.json</strong> pour sécuriser vos données locales avant toute mise à jour ou changement d'appareil.</p>
       <div style="display:flex;flex-wrap:wrap;gap:10px;">
         <button type="button" class="btn btn-primary" id="btnExportJSON">⬇️ Exporter (.json)</button>
         <label class="btn btn-info" style="cursor:pointer;margin:0;">
@@ -801,12 +907,13 @@ function renderArchives() {
     libraryHtml = `<div class="report-block"><p style="text-align:center;">Aucune archive dans cette sélection.</p></div>`;
   } else {
     const tree = {};
-    filteredArch.forEach(r => {
+    filteredArch.forEach(entry => {
+      const r = entry.r;
       const y = String(r.archiveAnnee || new Date(r.archivedAt).getFullYear());
       const m = String(r.archiveMois || MOIS_LISTE[new Date(r.archivedAt).getMonth()] || "AUTRE").toUpperCase();
       if (!tree[y]) tree[y] = {};
       if (!tree[y][m]) tree[y][m] = [];
-      tree[y][m].push(r);
+      tree[y][m].push(entry);
     });
 
     Object.keys(tree).sort((a, b) => b.localeCompare(a)).forEach(year => {
@@ -826,10 +933,11 @@ function renderArchives() {
                     <th>Province</th>
                     <th>Date</th>
                     <th>Archivé le</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${docs.map(r => `
+                  ${docs.map(({ r, realIdx }) => `
                     <tr>
                       <td>${r.originalType || '—'}</td>
                       <td>${r.typeEntite || '—'}</td>
@@ -837,6 +945,10 @@ function renderArchives() {
                       <td>${r.province || '—'}</td>
                       <td>${r.dateReference || r.dateRapport || '—'}</td>
                       <td>${r.archivedAt ? new Date(r.archivedAt).toLocaleString('fr-FR') : '—'}</td>
+                      <td style="white-space:nowrap;">
+                        <button type="button" class="btn btn-success btn-restore-arch" data-idx="${realIdx}" style="padding:4px 7px;font-size:11px;" title="Restaurer">♻️</button>
+                        <button type="button" class="btn btn-danger btn-del-arch" data-idx="${realIdx}" style="padding:4px 7px;font-size:11px;" title="Supprimer">✕</button>
+                      </td>
                     </tr>
                   `).join("")}
                 </tbody>
@@ -872,6 +984,13 @@ function renderArchives() {
   if (selM) selM.addEventListener("change", () => {
     App.archiveMonthFilter = selM.value;
     renderArchives();
+  });
+
+  $$(".btn-restore-arch", $("#archivesList")).forEach(btn => {
+    btn.addEventListener("click", () => restoreArchivedItem(Number(btn.dataset.idx)));
+  });
+  $$(".btn-del-arch", $("#archivesList")).forEach(btn => {
+    btn.addEventListener("click", () => deleteArchivedItem(Number(btn.dataset.idx)));
   });
 }
 
@@ -933,6 +1052,8 @@ function openForm(type, editId, prefill = {}) {
       html += `</div>`;
     });
   });
+
+  html += `<div id="formHintBox" style="grid-column:1 / -1;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px;display:none;"></div>`;
   $("#modalBody").innerHTML = html;
 
   const quickSel = $("#quickSelectEntite");
@@ -944,8 +1065,41 @@ function openForm(type, editId, prefill = {}) {
       if ($("#fld_typeEntite") && ent.typeEntite) $("#fld_typeEntite").value = ent.typeEntite;
       if ($("#fld_denomination") && ent.denomination) $("#fld_denomination").value = ent.denomination;
       if ($("#fld_responsable") && ent.responsable) $("#fld_responsable").value = ent.responsable;
+      refreshFormHint();
     });
   }
+
+  const refreshFormHint = () => {
+    const hint = $("#formHintBox");
+    if (!hint) return;
+    const msgs = [];
+
+    if (type === "entites") {
+      const provVal = $("#fld_province")?.value || "";
+      const denomVal = ($("#fld_denomination")?.value || "").trim().toLowerCase();
+      if (denomVal) {
+        const dup = (Store.data.entites || []).some(e =>
+          e.id !== App.editingId &&
+          e.province === provVal &&
+          String(e.denomination || "").trim().toLowerCase() === denomVal
+        );
+        if (dup) msgs.push(`⚠️ Une entité nommée "${$("#fld_denomination").value.trim()}" existe déjà en ${provVal}.`);
+      }
+    } else if (type === "numerique") {
+      const actifsVal = num($("#fld_actifs")?.value);
+      const culteMembresVal = num($("#fld_culteMembres")?.value);
+      if (actifsVal > 0 && culteMembresVal > actifsVal) {
+        msgs.push(`⚠️ Culte Membres (${culteMembresVal}) dépasse les Membres Actifs (${actifsVal}). Vérifiez la saisie.`);
+      }
+    }
+
+    if (msgs.length) {
+      hint.innerHTML = msgs.join("<br>");
+      hint.style.display = "block";
+    } else {
+      hint.style.display = "none";
+    }
+  };
 
   const updateCulteTotal = () => {
     const totalEl = $("#fld_totalCulte");
@@ -954,12 +1108,19 @@ function openForm(type, editId, prefill = {}) {
     const s = num($("#fld_culteSymp")?.value);
     const nv = num($("#fld_culteNV")?.value);
     totalEl.value = m + s + nv;
+    refreshFormHint();
   };
+
   ["culteMembres", "culteSymp", "culteNV"].forEach(k => {
     const el = $("#fld_" + k);
     if (el) el.addEventListener("input", updateCulteTotal);
   });
+  ["province", "denomination", "actifs"].forEach(k => {
+    const el = $("#fld_" + k);
+    if (el) el.addEventListener("input", refreshFormHint);
+  });
   updateCulteTotal();
+  refreshFormHint();
 
   $("#modal").classList.add("show");
 }
@@ -976,13 +1137,19 @@ function saveForm() {
   if (App.viewOnlyMode) return closeModal();
   const type = App.currentFormType, schema = SCHEMAS[type], data = {};
   let valid = true;
+  let hasNegative = false;
   schema.fields.forEach(f => {
     const el = $("#fld_" + f.key); if (!el) return;
-    let v = el.value.trim(); if (f.type === "number") v = v === "" ? 0 : Number(v);
+    let v = el.value.trim();
+    if (f.type === "number") {
+      v = v === "" ? 0 : Number(v);
+      if (v < 0) hasNegative = true;
+    }
     if (f.required && (v === "" || v === undefined)) { valid = false; el.style.borderColor = "red"; } else { el.style.borderColor = ""; }
     data[f.key] = v;
   });
   if (!valid) return alert("Remplissez les champs obligatoires (*).");
+  if (hasNegative) return alert("Les valeurs numériques ne peuvent pas être négatives.");
   if (type === "numerique" || type === "diffusion") {
     data.totalCulte = calcTotalCulte(data);
   }
