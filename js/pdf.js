@@ -6,6 +6,12 @@
         if (typeof updatePeriodeLabel === "function") {
           updatePeriodeLabel();
         }
+        if (typeof renderRapportGlobal === "function") {
+          renderRapportGlobal();
+        }
+        if (typeof renderRapportDetaille === "function") {
+          renderRapportDetaille();
+        }
         window.print();
       });
     }
