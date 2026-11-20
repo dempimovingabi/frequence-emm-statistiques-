@@ -13,6 +13,7 @@ const App = {
 };
 
 const AUTH_PWD_KEY = "EMM_RDC_ACCESS_PASSWORD_V1";
+const AUTH_RESET_DONE_KEY = "EMM_RDC_PWD_RESET_V22";
 const AUTH_SESSION_KEY = "EMM_RDC_SESSION_UNLOCKED_V1";
 const DEFAULT_APP_PASSWORD = "EMM2026";
 
@@ -23,6 +24,13 @@ function num(v) { const n = Number(v); return isNaN(n) ? 0 : n; }
 function calcTotalCulte(r) { return num(r.culteMembres) + num(r.culteSymp) + num(r.culteNV); }
 function normStr(v) { return String(v || "").trim().toLowerCase(); }
 
+function resetPasswordToDefault() {
+  try {
+    localStorage.setItem(AUTH_PWD_KEY, DEFAULT_APP_PASSWORD);
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
+  } catch (e) {}
+}
+
 function getStoredPassword() {
   try {
     return localStorage.getItem(AUTH_PWD_KEY) || DEFAULT_APP_PASSWORD;
@@ -31,85 +39,165 @@ function getStoredPassword() {
   }
 }
 
+function togglePasswordVisibility(inputId, btnId) {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (!input) return;
+  const isHidden = input.type === "password";
+  input.type = isHidden ? "text" : "password";
+  if (btn) {
+    btn.textContent = isHidden ? "🙈" : "👁️";
+    btn.title = isHidden ? "Masquer le mot de passe" : "Afficher le mot de passe";
+  }
+}
+
 function lockAppScreen() {
   try { sessionStorage.removeItem(AUTH_SESSION_KEY); } catch (e) {}
-  closeMenu();
-  const screen = $("#loginScreen");
-  const inp = $("#loginPasswordInput");
-  const err = $("#loginErrorMsg");
+  if (typeof closeMenu === "function") closeMenu();
+  const screen = document.getElementById("loginScreen");
+  const inp = document.getElementById("loginPasswordInput");
+  const err = document.getElementById("loginErrorMsg");
   if (err) { err.style.display = "none"; err.textContent = ""; }
-  if (inp) inp.value = "";
+  if (inp) {
+    inp.value = "";
+    inp.type = "password";
+  }
+  const eyeBtn = document.getElementById("btnToggleLoginEye");
+  if (eyeBtn) { eyeBtn.textContent = "👁️"; eyeBtn.title = "Afficher le mot de passe"; }
   if (screen) screen.style.display = "flex";
 }
 
 function unlockAppScreen() {
   try { sessionStorage.setItem(AUTH_SESSION_KEY, "1"); } catch (e) {}
-  const screen = $("#loginScreen");
+  const screen = document.getElementById("loginScreen");
   if (screen) screen.style.display = "none";
 }
 
-function bindAuthControls() {
-  const screen = $("#loginScreen");
-  const loginForm = $("#loginForm");
-  const pwdInput = $("#loginPasswordInput");
-  const errBox = $("#loginErrorMsg");
-  const btnLogout = $("#btnLogout");
-  const btnToggleChange = $("#btnToggleChangePwd");
-  const changeForm = $("#changePwdForm");
+function toggleChangePwdBox() {
+  const changeForm = document.getElementById("changePwdForm");
+  if (!changeForm) return;
+  const isHidden = changeForm.style.display === "none";
+  changeForm.style.display = isHidden ? "flex" : "none";
+  const oldInp = document.getElementById("oldPwdInput");
+  if (isHidden && oldInp && !oldInp.value) {
+    oldInp.value = getStoredPassword();
+  }
+}
+
+function handleForgotPassword() {
+  resetPasswordToDefault();
+  const pwdInput = document.getElementById("loginPasswordInput");
+  const oldInput = document.getElementById("oldPwdInput");
+  const changeForm = document.getElementById("changePwdForm");
+  const errBox = document.getElementById("loginErrorMsg");
+
+  if (pwdInput) pwdInput.value = DEFAULT_APP_PASSWORD;
+  if (oldInput) oldInput.value = DEFAULT_APP_PASSWORD;
+  if (changeForm) changeForm.style.display = "flex";
+  if (errBox) { errBox.style.display = "none"; errBox.textContent = ""; }
+
+  alert("✅ Mot de passe réinitialisé sur : EMM2026\n\nVous pouvez maintenant cliquer sur « Se connecter » ou saisir votre nouveau mot de passe puis cliquer sur « Enregistrer le nouveau mot de passe ».");
+}
+
+function handleLoginSubmit(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const pwdInput = document.getElementById("loginPasswordInput");
+  const errBox = document.getElementById("loginErrorMsg");
+  const entered = (pwdInput ? pwdInput.value : "").trim();
+  const currentPwd = getStoredPassword();
+
+  if (entered === currentPwd) {
+    if (errBox) { errBox.style.display = "none"; errBox.textContent = ""; }
+    unlockAppScreen();
+  } else if (errBox) {
+    errBox.textContent = "❌ Mot de passe incorrect. Cliquez sur « Mot de passe oublié » pour réinitialiser sur EMM2026.";
+    errBox.style.display = "block";
+  }
+  return false;
+}
+
+function handleChangePasswordSubmit(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const oldInput = document.getElementById("oldPwdInput");
+  const newInput = document.getElementById("newPwdInput");
+  const loginInput = document.getElementById("loginPasswordInput");
+  const changeForm = document.getElementById("changePwdForm");
+
+  const oldVal = (oldInput ? oldInput.value : "").trim();
+  const newVal = (newInput ? newInput.value : "").trim();
+  const currentPwd = getStoredPassword();
+
+  if (oldVal !== currentPwd) {
+    alert("❌ Le mot de passe actuel est incorrect. Cliquez d'abord sur « Mot de passe oublié » pour réinitialiser sur EMM2026.");
+    return false;
+  }
+  if (newVal.length < 4) {
+    alert("⚠️ Le nouveau mot de passe doit contenir au moins 4 caractères.");
+    return false;
+  }
+
+  try {
+    localStorage.setItem(AUTH_PWD_KEY, newVal);
+  } catch (err) {
+    alert("⚠️ Impossible d'enregistrer le mot de passe dans le stockage local.");
+    return false;
+  }
+
+  if (loginInput) loginInput.value = newVal;
+  if (oldInput) oldInput.value = newVal;
+  if (newInput) {
+    newInput.value = "";
+    newInput.type = "password";
+  }
+  const newEye = document.getElementById("btnToggleNewEye");
+  if (newEye) { newEye.textContent = "👁️"; newEye.title = "Afficher le nouveau mot de passe"; }
+  if (changeForm) changeForm.style.display = "none";
+
+  alert("✅ Nouveau mot de passe enregistré avec succès !");
+  return false;
+}
+
+async function forceHardRefreshApp() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        await reg.unregister();
+      }
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      for (const k of keys) {
+        await caches.delete(k);
+      }
+    }
+  } catch (e) {}
+  window.location.reload(true);
+}
+
+function initAuthState() {
+  try {
+    if (!localStorage.getItem(AUTH_RESET_DONE_KEY)) {
+      resetPasswordToDefault();
+      localStorage.setItem(AUTH_RESET_DONE_KEY, "1");
+    }
+  } catch (e) {}
+
+  const screen = document.getElementById("loginScreen");
+  const oldInp = document.getElementById("oldPwdInput");
+  if (oldInp && !oldInp.value) {
+    oldInp.value = getStoredPassword();
+  }
 
   let isUnlocked = false;
   try { isUnlocked = sessionStorage.getItem(AUTH_SESSION_KEY) === "1"; } catch (e) {}
   if (screen) screen.style.display = isUnlocked ? "none" : "flex";
-
-  if (loginForm) {
-    loginForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const entered = (pwdInput?.value || "").trim();
-      if (entered === getStoredPassword()) {
-        if (errBox) errBox.style.display = "none";
-        unlockAppScreen();
-      } else if (errBox) {
-        errBox.textContent = "❌ Mot de passe incorrect. Réessayez.";
-        errBox.style.display = "block";
-      }
-    });
-  }
-
-  if (btnLogout) {
-    btnLogout.addEventListener("click", () => {
-      lockAppScreen();
-    });
-  }
-
-  if (btnToggleChange && changeForm) {
-    btnToggleChange.addEventListener("click", () => {
-      const visible = changeForm.style.display === "flex";
-      changeForm.style.display = visible ? "none" : "flex";
-    });
-  }
-
-  if (changeForm) {
-    changeForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const oldVal = ($("#oldPwdInput")?.value || "").trim();
-      const newVal = ($("#newPwdInput")?.value || "").trim();
-      if (oldVal !== getStoredPassword()) {
-        return alert("❌ L'ancien mot de passe est incorrect.");
-      }
-      if (newVal.length < 4) {
-        return alert("Le nouveau mot de passe doit contenir au moins 4 caractères.");
-      }
-      try { localStorage.setItem(AUTH_PWD_KEY, newVal); } catch (err) {}
-      $("#oldPwdInput").value = "";
-      $("#newPwdInput").value = "";
-      changeForm.style.display = "none";
-      alert("✅ Nouveau mot de passe enregistré avec succès.");
-    });
-  }
 }
 
+initAuthState();
+
 document.addEventListener("DOMContentLoaded", () => {
-  bindAuthControls();
+  initAuthState();
   Store.load();
   syncPeriodeControls();
   updatePeriodeLabel();
@@ -428,7 +516,7 @@ function renderTutoriel() {
   const sections = [
     {
       title: "1. Connexion, mot de passe & période active",
-      body: "À l'ouverture, entrez le mot de passe d'accès (par défaut <strong>EMM2026</strong>, personnalisable depuis l'écran de connexion). Utilisez le bouton <strong>🔒 Déconnexion</strong> en haut à droite pour verrouiller l'application. Sélectionnez ensuite le <strong>Mois</strong>, l'<strong>Année</strong> et la <strong>Date de référence</strong>."
+      body: "À l'ouverture, entrez le mot de passe d'accès (par défaut <strong>EMM2026</strong>, personnalisable depuis l'écran de connexion ou réinitialisable via <strong>❓ Mot de passe oublié</strong> ; utilisez l'icône <strong>👁️ / 🙈</strong> pour afficher ou masquer la saisie). Utilisez le bouton <strong>🔒 Déconnexion</strong> en haut à droite pour verrouiller l'application. Sélectionnez ensuite le <strong>Mois</strong>, l'<strong>Année</strong> et la <strong>Date de référence</strong>."
     },
     {
       title: "2. Répertoire des Entités (par Province)",
