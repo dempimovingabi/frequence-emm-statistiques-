@@ -1,518 +1,272 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#15803d">
-<title>EMM RD Congo — Gestion Nationale</title>
-<link rel="stylesheet" href="./css/style.css">
-<link rel="manifest" href="./manifest.json">
-<link rel="icon" type="image/png" href="./icon-192.png">
-<style>
-* { box-sizing: border-box; }
-body { margin: 0; font-family: Arial, sans-serif; background: #f1f5f9; color: #0f172a; }
-
-.splash-screen {
-  position: fixed; inset: 0; z-index: 9999;
-  background: linear-gradient(160deg, #16a34a 0%, #15803d 55%, #14532d 100%);
-  display: flex; align-items: center; justify-content: center; padding: 24px;
-  transition: opacity 0.45s ease, transform 0.45s ease;
-}
-.splash-screen.fade-out { opacity: 0; transform: scale(1.03); pointer-events: none; }
-.splash-inner { text-align: center; color: #ffffff; animation: splashPop 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-.splash-logo {
-  width: 112px; height: 112px; object-fit: cover; border-radius: 22px;
-  background: #ffffff; padding: 8px; box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
-  margin: 0 auto 18px; display: block; animation: logoPulse 2.4s ease-in-out infinite;
-}
-.splash-title { display: flex; flex-direction: column; gap: 2px; font-size: 26px; font-weight: 800; line-height: 1.2; }
-.splash-sub { margin-top: 12px; font-size: 13px; opacity: 0.9; }
-@keyframes splashPop { 0% { opacity: 0; transform: translateY(18px) scale(0.92); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes logoPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-
-.auth-gate {
-  position: fixed; inset: 0; z-index: 9000;
-  background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(4px);
-  display: none; align-items: center; justify-content: center; padding: 20px;
-}
-.auth-gate.show { display: flex; }
-.auth-card {
-  width: 100%; max-width: 380px; background: #ffffff; border-radius: 14px;
-  padding: 24px 20px; box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35); text-align: center;
-}
-.auth-logo { width: 72px; height: 72px; object-fit: cover; border-radius: 14px; margin: 0 auto 10px; display: block; }
-.auth-card h2 { margin: 0 0 6px; color: #15803d; font-size: 20px; }
-.auth-subtitle { margin: 0 0 16px; color: #475569; font-size: 13px; }
-.auth-card .form-group { text-align: left; margin-bottom: 14px; }
-.auth-error { color: #dc2626; font-size: 13px; min-height: 18px; margin: 0 0 10px; font-weight: 600; }
-.auth-actions { margin-top: 14px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; }
-.auth-sep { color: #94a3b8; font-size: 12px; }
-.auth-link-btn { background: none; border: none; color: #1e3a8a; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 2px; }
-.auth-link-danger { color: #dc2626; }
-
-.topbar {
-  background: #1e3a8a; color: #fff; padding: 10px 14px; display: flex; align-items: center; gap: 8px;
-  position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-}
-.hamburger { background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 20px; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
-.topbar-logo { height: 34px; width: 34px; object-fit: cover; border-radius: 6px; }
-.topbar-title { margin: 0; font-size: 17px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.topbar-date { font-size: 11px; background: rgba(255,255,255,0.18); color: #fff; padding: 5px 8px; border-radius: 6px; font-weight: 600; }
-.btn-logout { background: rgba(220, 38, 38, 0.9); border: none; color: #fff; font-size: 11px; padding: 5px 8px; border-radius: 6px; cursor: pointer; font-weight: 700; }
-
-.sidebar {
-  position: fixed; top: 0; left: -270px; width: 260px; height: 100%; background: #0f172a; color: #fff;
-  z-index: 300; transition: left 0.25s ease; display: flex; flex-direction: column;
-}
-.sidebar.open { left: 0; }
-.sidebar-header { padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; }
-.btn-close { background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; }
-.sidebar-nav { flex: 1; display: flex; flex-direction: column; padding: 10px 0; overflow-y: auto; }
-.nav-link { color: #cbd5e1; text-decoration: none; padding: 11px 18px; font-size: 14px; border-left: 3px solid transparent; }
-.nav-link:hover, .nav-link.active { background: #1e293b; color: #fff; border-left-color: #38bdf8; }
-.sidebar-footer { padding: 10px 16px; border-top: 1px solid #1e293b; color: #94a3b8; display: flex; flex-direction: column; gap: 4px; }
-.net-status { font-size: 12px; font-weight: 700; color: #4ade80; }
-.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; }
-.overlay.show { display: block; }
-
-.main { padding: 14px; max-width: 1400px; margin: 0 auto; }
-.periode-bar {
-  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: #ffffff;
-  padding: 10px 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  margin-bottom: 10px; border-left: 4px solid #15803d;
-}
-.periode-field { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #1e293b; }
-.periode-field select, .periode-field input { padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #f8fafc; }
-
-.action-bar { display: flex; flex-wrap: wrap; gap: 8px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 10px; }
-.search-input { flex: 1; min-width: 160px; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
-.print-options { display: flex; flex-wrap: wrap; gap: 14px; background: #fff; padding: 8px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; align-items: center; }
-.print-options select { padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 5px; }
-
-.btn { border: none; padding: 7px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; color: #fff; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
-.btn-primary { background: #2563eb; }
-.btn-info { background: #0284c7; }
-.btn-danger { background: #dc2626; }
-.btn-warning { background: #d97706; }
-.btn-success { background: #16a34a; }
-.btn-secondary { background: #64748b; }
-.btn-eye { background: #0f766e; padding: 4px 8px; font-size: 12px; }
-
-.province-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-.prov-pill {
-  border: 1px solid #cbd5e1; background: #ffffff; color: #1e293b;
-  padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer;
-}
-.prov-pill.active { background: #15803d; color: #ffffff; border-color: #15803d; }
-
-.page { display: none; }
-.page.active { display: block; }
-h2 { margin: 0 0 12px; font-size: 20px; color: #1e3a8a; }
-
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 18px; }
-.kpi-card { background: #fff; border-radius: 8px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #2563eb; }
-.kpi-label { font-size: 12px; color: #475569; margin-bottom: 6px; }
-.kpi-value { font-size: 22px; font-weight: 700; color: #0f172a; }
-
-.chart-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; font-size: 12px; color: #334155; }
-.legend-item { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
-.legend-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-.bar-row { margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0; }
-.bar-row-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; margin-bottom: 6px; }
-.bar-track { width: 100%; height: 16px; background: #e2e8f0; border-radius: 999px; overflow: hidden; display: flex; }
-.bar-seg-m { background: #15803d; height: 100%; }
-.bar-seg-s { background: #2563eb; height: 100%; }
-.bar-seg-nv { background: #d97706; height: 100%; }
-.bar-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: #475569; margin-top: 4px; }
-
-.table-wrapper { background: #fff; border-radius: 8px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
-table.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-table.data-table th, table.data-table td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; white-space: nowrap; }
-table.data-table th { background: #1e3a8a; color: #fff; font-weight: 600; text-align: center; }
-table.data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-table.data-table tr:nth-child(even) td { background: #f8fafc; }
-table.data-table tr.selected td { background: #dbeafe !important; }
-table.data-table tr.row-subtotal td { background: #e2e8f0; font-weight: 700; }
-
-.synth-section, .report-block { background: #fff; padding: 14px; border-radius: 8px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.synth-section h3, .report-block h3 { margin: 0 0 10px; font-size: 15px; color: #0f172a; }
-
-.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; align-items: center; justify-content: center; padding: 12px; }
-.modal.show { display: flex; }
-.modal-content { background: #fff; border-radius: 8px; width: 100%; max-width: 680px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
-.modal-header { background: #1e3a8a; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { margin: 0; font-size: 16px; }
-.modal-body { padding: 16px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.form-group { display: flex; flex-direction: column; gap: 4px; }
-.form-group label { font-size: 12px; font-weight: 600; color: #334155; }
-.form-group input, .form-group select, .form-group textarea { padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; }
-.modal-footer { padding: 10px 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px; }
-
-.print-only-header { display: none; }
-@media print {
-  .no-print, .topbar, .sidebar, .overlay, .modal, .splash-screen, .auth-gate, .btn-logout, .btn-eye { display: none !important; }
-  .print-only-header { display: block; text-align: center; margin-bottom: 14px; border-bottom: 2px solid #15803d; padding-bottom: 8px; }
-  .main { padding: 0; max-width: 100%; }
-  .page { display: block !important; page-break-after: always; }
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EMM RD Congo — Gestion Nationale</title>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#1e3a8a" />
+  <link rel="icon" type="image/png" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="stylesheet" href="./css/style.css" />
 </head>
 <body>
+  <div id="overlay" class="overlay"></div>
 
-<div id="splashScreen" class="splash-screen" aria-hidden="true">
-  <div class="splash-inner">
-    <img src="./assets/images/logos/logo-emm.png" alt="Logo EMM RD Congo" class="splash-logo">
-    <div class="splash-title">
-      <span>Église Messianique</span>
-      <span>Mondiale</span>
-    </div>
-    <div class="splash-sub">EMM RD Congo — Gestion Nationale</div>
-  </div>
-</div>
-
-<div id="authGate" class="auth-gate">
-  <div class="auth-card">
-    <img src="./assets/images/logos/logo-emm.png" alt="Logo EMM RD Congo" class="auth-logo">
-    <h2 id="authTitle">Accès Sécurisé</h2>
-    <p id="authSubtitle" class="auth-subtitle">Veuillez saisir votre mot de passe pour accéder au tableau de bord.</p>
-
-    <form id="authForm">
-      <div class="form-group">
-        <label id="authPassLabel" for="authPassInput">Mot de passe</label>
-        <input type="password" id="authPassInput" placeholder="Entrez le mot de passe" required autocomplete="current-password">
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-box">
+        <img src="./assets/images/logos/logo-emm.png" alt="Logo EMM" class="brand-logo" onerror="this.style.display='none'" />
+        <div>
+          <div class="brand-title">EMM RD CONGO</div>
+          <div class="brand-sub">Gestion Nationale</div>
+        </div>
       </div>
-      <div class="form-group" id="authConfirmGroup" style="display:none;">
-        <label for="authPassConfirm">Confirmer / Nouveau mot de passe</label>
-        <input type="password" id="authPassConfirm" placeholder="Confirmez ou saisissez le nouveau mot de passe" autocomplete="new-password">
+      <button type="button" id="btnCloseMenu" class="icon-btn" title="Fermer le menu">✕</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-link active" data-page="dashboard">📊 Tableau de Bord</a>
+      <a href="#" class="nav-link" data-page="entites">🏛️ Répertoire Entités</a>
+      <a href="#" class="nav-link" data-page="numerique">💻 Numérique</a>
+      <a href="#" class="nav-link" data-page="diffusion">📻 Diffusion</a>
+      <a href="#" class="nav-link" data-page="diffusion-suite">📋 Diffusion Suite</a>
+      <a href="#" class="nav-link" data-page="synthese">📈 Synthèse Nationale</a>
+      <a href="#" class="nav-link" data-page="rapport-global">📑 Rapport Global</a>
+      <a href="#" class="nav-link" data-page="rapport-detaille">🗂️ Rapport Détaillé</a>
+      <a href="#" class="nav-link" data-page="graphiques">📉 Graphiques</a>
+      <a href="#" class="nav-link" data-page="archives">🗄️ Archives</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div id="netStatus">● En ligne (PWA prête)</div>
+      <small>Version 2026 — Hors-ligne activé</small>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button type="button" id="btnMenu" class="icon-btn" title="Menu">☰</button>
+        <div>
+          <h1 class="app-title">EMM RD Congo — Gestion Nationale</h1>
+          <div id="moisAnnee" class="periode-badge">NOVEMBRE 2026</div>
+        </div>
       </div>
-      <p id="authError" class="auth-error"></p>
-      <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width:100%;">🔓 Entrer</button>
-    </form>
 
-    <div class="auth-actions" id="authSecondaryActions">
-      <button type="button" id="btnResetPass" class="auth-link-btn">⚙️ Modifier le mot de passe</button>
-      <span class="auth-sep">•</span>
-      <button type="button" id="btnForgotPass" class="auth-link-btn auth-link-danger">🔑 Mot de passe oublié</button>
+      <div class="topbar-periode">
+        <select id="selectMois" aria-label="Mois">
+          <option value="JANVIER">JANVIER</option>
+          <option value="FÉVRIER">FÉVRIER</option>
+          <option value="MARS">MARS</option>
+          <option value="AVRIL">AVRIL</option>
+          <option value="MAI">MAI</option>
+          <option value="JUIN">JUIN</option>
+          <option value="JUILLET">JUILLET</option>
+          <option value="AOÛT">AOÛT</option>
+          <option value="SEPTEMBRE">SEPTEMBRE</option>
+          <option value="OCTOBRE">OCTOBRE</option>
+          <option value="NOVEMBRE">NOVEMBRE</option>
+          <option value="DÉCEMBRE">DÉCEMBRE</option>
+        </select>
+        <input type="number" id="inputAnnee" min="2000" max="2100" value="2026" aria-label="Année" />
+        <input type="date" id="inputDateRef" aria-label="Date de référence" />
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Rechercher une entité, province, responsable..." />
+        <button type="button" id="btnClearSearch" class="btn btn-light" title="Effacer la recherche">✕</button>
+      </div>
+
+      <div class="action-bar">
+        <button type="button" id="btnNouveau" class="btn btn-success">＋ Nouveau</button>
+        <button type="button" id="btnModifier" class="btn btn-info">✏️ Modifier</button>
+        <button type="button" id="btnDupliquer" class="btn btn-primary">📋 Dupliquer</button>
+        <button type="button" id="btnArchiver" class="btn btn-warning">📦 Archiver</button>
+        <button type="button" id="btnSupprimer" class="btn btn-danger">🗑️ Supprimer</button>
+        <button type="button" id="btnPDF" class="btn btn-dark">🖨️ PDF / Imprimer</button>
+      </div>
+
+      <div class="print-options">
+        <label>Police :
+          <select id="fontSelect">
+            <option value="Segoe UI">Segoe UI</option>
+            <option value="Arial">Arial</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Tahoma">Tahoma</option>
+          </select>
+        </label>
+        <label>Taille :
+          <select id="fontSize">
+            <option value="13">13 px</option>
+            <option value="14" selected>14 px</option>
+            <option value="15">15 px</option>
+            <option value="16">16 px</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div id="printMetaLine" class="print-meta-line"></div>
+
+    <main class="content">
+      <section id="page-dashboard" class="page active">
+        <div id="kpiGrid" class="kpi-grid"></div>
+        <div id="provinceSummary"></div>
+      </section>
+
+      <section id="page-entites" class="page">
+        <div id="entitesContent"></div>
+      </section>
+
+      <section id="page-numerique" class="page">
+        <div class="report-block">
+          <h3>💻 Rapports Numériques</h3>
+          <div class="table-wrapper">
+            <table id="tableNumerique" class="data-table"></table>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-diffusion" class="page">
+        <div class="report-block">
+          <h3>📻 Rapports Diffusion</h3>
+          <div class="table-wrapper">
+            <table id="tableDiffusion" class="data-table"></table>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-diffusion-suite" class="page">
+        <div class="report-block">
+          <h3>📋 Rapports Diffusion — Suite</h3>
+          <div class="table-wrapper">
+            <table id="tableDiffusionSuite" class="data-table"></table>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-synthese" class="page">
+        <div id="syntheseContent"></div>
+      </section>
+
+      <section id="page-rapport-global" class="page">
+        <div id="rapportGlobal"></div>
+      </section>
+
+      <section id="page-rapport-detaille" class="page">
+        <div id="rapportDetaille"></div>
+      </section>
+
+      <section id="page-graphiques" class="page">
+        <div id="graphiquesContent"></div>
+      </section>
+
+      <section id="page-archives" class="page">
+        <div id="archivesList"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal" class="modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalTitle">Formulaire</h3>
+        <button type="button" id="btnCloseModal" class="icon-btn">✕</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" id="btnCancel" class="btn btn-light">Annuler</button>
+        <button type="button" id="btnSave" class="btn btn-success">💾 Enregistrer</button>
+      </div>
     </div>
   </div>
-</div>
 
-<header class="topbar">
-  <button id="btnMenu" class="hamburger" aria-label="Menu">☰</button>
-  <img src="./assets/images/logos/logo-emm.png" alt="Logo EMM RD Congo" class="topbar-logo">
-  <h1 class="topbar-title">EMM RD Congo</h1>
-  <span id="moisAnnee" class="topbar-date">—</span>
-  <button type="button" id="btnLogout" class="btn-logout" title="Verrouiller / Déconnexion">🔒 Déconnexion</button>
-</header>
-
-<aside id="sidebar" class="sidebar">
-  <div class="sidebar-header">
-    <strong>Navigation</strong>
-    <button id="btnCloseMenu" class="btn-close">✕</button>
-  </div>
-  <nav class="sidebar-nav">
-    <a href="#dashboard" class="nav-link active" data-page="dashboard">📊 Tableau de bord</a>
-    <a href="#entites" class="nav-link" data-page="entites">🏢 Répertoire Entités</a>
-    <a href="#graphiques" class="nav-link" data-page="graphiques">📈 Graphiques</a>
-    <a href="#numerique" class="nav-link" data-page="numerique">💻 Rapport Numérique</a>
-    <a href="#diffusion" class="nav-link" data-page="diffusion">📻 Rapport Diffusion</a>
-    <a href="#diffusion-suite" class="nav-link" data-page="diffusion-suite">📋 Diffusion Suite</a>
-    <a href="#synthese" class="nav-link" data-page="synthese">🏛️ Synthèse Nationale</a>
-    <a href="#rapport-global" class="nav-link" data-page="rapport-global">🌍 Rapport Global</a>
-    <a href="#rapport-detaille" class="nav-link" data-page="rapport-detaille">🔎 Rapport Détaillé</a>
-    <a href="#archives" class="nav-link" data-page="archives">🗄️ Archives</a>
-  </nav>
-  <div class="sidebar-footer">
-    <div id="netStatus" class="net-status">● Mode Local</div>
-    <small>© EMM RD Congo</small>
-  </div>
-</aside>
-<div id="overlay" class="overlay"></div>
-
-<main class="main">
-  <div id="printHeader" class="print-only-header">
-    <h2>Église Messianique Mondiale — EMM RD Congo</h2>
-    <p id="printMetaLine">Rapport National</p>
+  <div id="pwaUpdateBanner" style="display:none;position:fixed;bottom:14px;right:14px;left:14px;max-width:520px;margin:0 auto;background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:10px;padding:10px 14px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,0.25);align-items:center;justify-content:space-between;gap:10px;">
+    <span style="font-size:12.5px;">✨ Une nouvelle version de l'application est disponible.</span>
+    <button type="button" id="btnApplyUpdate" class="btn btn-success">🔄 Mettre à jour</button>
   </div>
 
-  <section class="periode-bar no-print">
-    <div class="periode-field">
-      <label for="selectMois">📅 Mois :</label>
-      <select id="selectMois">
-        <option value="JANVIER">JANVIER</option>
-        <option value="FÉVRIER">FÉVRIER</option>
-        <option value="MARS">MARS</option>
-        <option value="AVRIL">AVRIL</option>
-        <option value="MAI">MAI</option>
-        <option value="JUIN">JUIN</option>
-        <option value="JUILLET">JUILLET</option>
-        <option value="AOÛT">AOÛT</option>
-        <option value="SEPTEMBRE">SEPTEMBRE</option>
-        <option value="OCTOBRE">OCTOBRE</option>
-        <option value="NOVEMBRE">NOVEMBRE</option>
-        <option value="DÉCEMBRE">DÉCEMBRE</option>
-      </select>
-    </div>
-    <div class="periode-field">
-      <label for="inputAnnee">🗓️ Année :</label>
-      <input type="number" id="inputAnnee" min="2000" max="2100" step="1" placeholder="2026">
-    </div>
-    <div class="periode-field">
-      <label for="inputDateRef">📆 Date (calendrier) :</label>
-      <input type="date" id="inputDateRef">
-    </div>
-  </section>
+  <script src="./js/data.js"></script>
+  <script src="./js/app.js"></script>
+  <script src="./js/pdf.js"></script>
+  <script>
+    (function () {
+      let deferredInstallPrompt = null;
+      let waitingWorker = null;
 
-  <section class="action-bar no-print">
-    <input type="text" id="searchInput" placeholder="🔎 Rechercher..." class="search-input">
-    <button class="btn btn-primary" id="btnNouveau">＋ Nouveau</button>
-    <button class="btn btn-info" id="btnModifier">✏️ Modifier</button>
-    <button class="btn btn-secondary" id="btnDupliquer">📋 Dupliquer</button>
-    <button class="btn btn-danger" id="btnSupprimer">🗑️ Supprimer</button>
-    <button class="btn btn-warning" id="btnArchiver">📦 Archiver</button>
-    <button class="btn btn-success" id="btnPDF">📄 PDF / Imprimer</button>
-  </section>
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
 
-  <section class="print-options no-print">
-    <label>Police :
-      <select id="fontSelect">
-        <option value="Arial">Arial</option><option value="Calibri">Calibri</option>
-        <option value="Georgia">Georgia</option><option value="Times New Roman">Times New Roman</option>
-        <option value="Verdana">Verdana</option><option value="Tahoma">Tahoma</option>
-        <option value="Courier New">Courier New</option><option value="Trebuchet MS">Trebuchet MS</option>
-        <option value="Comic Sans MS">Comic Sans MS</option><option value="Segoe UI">Segoe UI</option>
-      </select>
-    </label>
-    <label>Taille :
-      <select id="fontSize">
-        <option>8</option><option>9</option><option>10</option><option>11</option>
-        <option selected>12</option><option>14</option><option>16</option>
-        <option>18</option><option>20</option><option>22</option><option>24</option>
-      </select>
-    </label>
-    <button type="button" id="btnClearSearch" class="btn btn-secondary" style="margin-left:auto;">↺ Réinitialiser recherche</button>
-  </section>
+        const actionBar = document.querySelector(".action-bar");
+        if (actionBar && !document.getElementById("btnInstallPWA")) {
+          const btnInstall = document.createElement("button");
+          btnInstall.type = "button";
+          btnInstall.id = "btnInstallPWA";
+          btnInstall.className = "btn btn-primary";
+          btnInstall.textContent = "📲 Installer l'App";
+          btnInstall.addEventListener("click", async () => {
+            if (!deferredInstallPrompt) return;
+            deferredInstallPrompt.prompt();
+            await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            btnInstall.remove();
+          });
+          actionBar.appendChild(btnInstall);
+        }
+      });
 
-  <section id="page-dashboard" class="page active">
-    <h2>📊 Tableau de bord national</h2>
-    <div class="kpi-grid" id="kpiGrid"></div>
-    <div class="province-summary" id="provinceSummary"></div>
-  </section>
+      window.addEventListener("appinstalled", () => {
+        deferredInstallPrompt = null;
+        const btn = document.getElementById("btnInstallPWA");
+        if (btn) btn.remove();
+      });
 
-  <section id="page-entites" class="page">
-    <h2>🏢 Enregistrement des Entités par Province</h2>
-    <div id="entitesContent"></div>
-  </section>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("./sw.js").then((reg) => {
+            if (reg.waiting) {
+              waitingWorker = reg.waiting;
+              const banner = document.getElementById("pwaUpdateBanner");
+              if (banner) banner.style.display = "flex";
+            }
 
-  <section id="page-graphiques" class="page">
-    <h2>📈 Évolution des Fréquences</h2>
-    <div id="graphiquesContent"></div>
-  </section>
+            reg.addEventListener("updatefound", () => {
+              const newWorker = reg.installing;
+              if (!newWorker) return;
+              newWorker.addEventListener("statechange", () => {
+                if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                  waitingWorker = newWorker;
+                  const banner = document.getElementById("pwaUpdateBanner");
+                  if (banner) banner.style.display = "flex";
+                }
+              });
+            });
+          }).catch(() => {});
 
-  <section id="page-numerique" class="page">
-    <h2>💻 Rapport Numérique</h2>
-    <div class="table-wrapper"><table class="data-table" id="tableNumerique"></table></div>
-  </section>
-
-  <section id="page-diffusion" class="page">
-    <h2>📻 Rapport Diffusion</h2>
-    <div class="table-wrapper"><table class="data-table" id="tableDiffusion"></table></div>
-  </section>
-
-  <section id="page-diffusion-suite" class="page">
-    <h2>📋 Rapport Diffusion — Suite</h2>
-    <div class="table-wrapper"><table class="data-table" id="tableDiffusionSuite"></table></div>
-  </section>
-
-  <section id="page-synthese" class="page">
-    <h2>🏛️ Synthèse Nationale</h2>
-    <div id="syntheseContent"></div>
-  </section>
-
-  <section id="page-rapport-global" class="page">
-    <h2>🌍 Rapport Global</h2>
-    <div id="rapportGlobal"></div>
-  </section>
-
-  <section id="page-rapport-detaille" class="page">
-    <h2>🔎 Rapport Détaillé par Entité</h2>
-    <div id="rapportDetaille"></div>
-  </section>
-
-  <section id="page-archives" class="page">
-    <h2>🗄️ Archives</h2>
-    <div id="archivesList"></div>
-  </section>
-</main>
-
-<div id="modal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 id="modalTitle">Formulaire</h3>
-      <button class="btn-close" id="btnCloseModal">✕</button>
-    </div>
-    <div class="modal-body" id="modalBody"></div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" id="btnCancel">Fermer</button>
-      <button class="btn btn-primary" id="btnSave">💾 Enregistrer</button>
-    </div>
-  </div>
-</div>
-
-<script>
-(function () {
-  const PASS_KEY = "emm_rdc_pass_hash_v1";
-  const splash = document.getElementById("splashScreen");
-  const authGate = document.getElementById("authGate");
-  const authForm = document.getElementById("authForm");
-  const authTitle = document.getElementById("authTitle");
-  const authSubtitle = document.getElementById("authSubtitle");
-  const authPassLabel = document.getElementById("authPassLabel");
-  const authPassInput = document.getElementById("authPassInput");
-  const authPassConfirm = document.getElementById("authPassConfirm");
-  const authConfirmGroup = document.getElementById("authConfirmGroup");
-  const authError = document.getElementById("authError");
-  const authSecondaryActions = document.getElementById("authSecondaryActions");
-  const btnResetPass = document.getElementById("btnResetPass");
-  const btnForgotPass = document.getElementById("btnForgotPass");
-  const btnLogout = document.getElementById("btnLogout");
-
-  let mode = "login";
-
-  function simpleHash(str) {
-    let h = 2166136261;
-    for (let i = 0; i < str.length; i++) {
-      h ^= str.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return (h >>> 0).toString(16);
-  }
-
-  function configureAuthMode(nextMode) {
-    mode = nextMode;
-    authError.textContent = "";
-    authPassInput.value = "";
-    authPassConfirm.value = "";
-
-    if (mode === "setup") {
-      authTitle.textContent = "Créer un mot de passe";
-      authSubtitle.textContent = "Définissez votre mot de passe pour protéger l'accès au tableau de bord.";
-      authPassLabel.textContent = "Nouveau mot de passe";
-      authConfirmGroup.style.display = "block";
-      authSecondaryActions.style.display = "none";
-    } else if (mode === "change") {
-      authTitle.textContent = "Modifier le mot de passe";
-      authSubtitle.textContent = "Entrez votre mot de passe actuel puis le nouveau mot de passe.";
-      authPassLabel.textContent = "Mot de passe actuel";
-      authConfirmGroup.style.display = "block";
-      authSecondaryActions.style.display = "none";
-    } else {
-      authTitle.textContent = "Connexion";
-      authSubtitle.textContent = "Saisissez le mot de passe pour ouvrir le tableau de bord.";
-      authPassLabel.textContent = "Mot de passe";
-      authConfirmGroup.style.display = "none";
-      authSecondaryActions.style.display = "block";
-    }
-  }
-
-  function openAuthScreen() {
-    const hasPass = Boolean(localStorage.getItem(PASS_KEY));
-    configureAuthMode(hasPass ? "login" : "setup");
-    authGate.classList.add("show");
-    setTimeout(() => authPassInput.focus(), 100);
-  }
-
-  function unlockApp() {
-    authGate.classList.remove("show");
-    authError.textContent = "";
-    authPassInput.value = "";
-    authPassConfirm.value = "";
-  }
-
-  authForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const savedHash = localStorage.getItem(PASS_KEY);
-    const val1 = authPassInput.value.trim();
-    const val2 = authPassConfirm.value.trim();
-
-    if (!val1) {
-      authError.textContent = "Veuillez entrer un mot de passe.";
-      return;
-    }
-
-    if (mode === "setup") {
-      if (val1.length < 4) {
-        authError.textContent = "Choisissez au moins 4 caractères.";
-        return;
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener("controllerchange", () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+          });
+        });
       }
-      if (val1 !== val2) {
-        authError.textContent = "Les deux mots de passe ne correspondent pas.";
-        return;
+
+      const btnApply = document.getElementById("btnApplyUpdate");
+      if (btnApply) {
+        btnApply.addEventListener("click", () => {
+          if (waitingWorker) {
+            waitingWorker.postMessage({ type: "SKIP_WAITING" });
+          } else {
+            window.location.reload();
+          }
+        });
       }
-      localStorage.setItem(PASS_KEY, simpleHash(val1));
-      unlockApp();
-    } else if (mode === "change") {
-      if (simpleHash(val1) !== savedHash) {
-        authError.textContent = "Mot de passe actuel incorrect.";
-        return;
-      }
-      if (val2.length < 4) {
-        authError.textContent = "Le nouveau mot de passe doit contenir au moins 4 caractères.";
-        return;
-      }
-      localStorage.setItem(PASS_KEY, simpleHash(val2));
-      alert("✅ Mot de passe mis à jour.");
-      configureAuthMode("login");
-      unlockApp();
-    } else {
-      if (simpleHash(val1) === savedHash) {
-        unlockApp();
-      } else {
-        authError.textContent = "Mot de passe incorrect.";
-      }
-    }
-  });
-
-  btnResetPass.addEventListener("click", () => {
-    configureAuthMode("change");
-    authPassInput.focus();
-  });
-
-  btnForgotPass.addEventListener("click", () => {
-    const ok = confirm("Mot de passe oublié : voulez-vous réinitialiser le mot de passe local afin d'en créer un nouveau ? (Vos rapports enregistrés restent conservés.)");
-    if (!ok) return;
-    localStorage.removeItem(PASS_KEY);
-    configureAuthMode("setup");
-    authPassInput.focus();
-  });
-
-  if (btnLogout) {
-    btnLogout.addEventListener("click", () => {
-      openAuthScreen();
-    });
-  }
-
-  setTimeout(() => {
-    if (splash) {
-      splash.classList.add("fade-out");
-      setTimeout(() => {
-        splash.style.display = "none";
-        openAuthScreen();
-      }, 450);
-    }
-  }, 3000);
-})();
-</script>
-
-<script src="./js/data.js"></script>
-<script src="./js/app.js"></script>
-<script src="./js/pdf.js"></script>
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW:", err));
-    });
-  }
-</script>
+    })();
+  </script>
 </body>
 </html>
