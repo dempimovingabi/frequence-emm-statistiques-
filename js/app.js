@@ -760,7 +760,6 @@ function renderRapportGlobal() {
 
   let html = "";
 
-  // Ordre : Province -> Entités enregistrées (dans l'ordre d'enregistrement) + Rapports de la province
   PROVINCES.forEach(prov => {
     const provEntites = allEntites.filter(e => e.province === prov);
     const provReports = allReports.filter(r => r.province === prov);
@@ -937,7 +936,7 @@ function importBackupJSON(file) {
       }
       if (!confirm("Remplacer les données actuelles par celles de cette sauvegarde ?")) return;
       Store.data = {
-        periode: Object.assign({ mois: "NOVEMBRE", annee: 2026, dateReference: "2026-11-19" }, importedData.periode || {}),
+        periode: Object.assign({ mois: "NOVEMBRE", annee: 2026, dateReference: "2026-11-20" }, importedData.periode || {}),
         entites: Array.isArray(importedData.entites) ? importedData.entites : [],
         numerique: Array.isArray(importedData.numerique) ? importedData.numerique : [],
         diffusion: Array.isArray(importedData.diffusion) ? importedData.diffusion : [],
