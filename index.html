@@ -19,28 +19,35 @@
         <div style="font-size:13px;color:#475569;margin-top:3px;">Gestion Nationale — Accès Sécurisé</div>
       </div>
 
-      <form id="loginForm" style="display:flex;flex-direction:column;gap:12px;">
+      <form id="loginForm" onsubmit="return handleLoginSubmit(event);" style="display:flex;flex-direction:column;gap:12px;">
         <div class="form-group">
-          <label for="loginPasswordInput">Mot de passe d'accès (par défaut : EMM2026)</label>
-          <input type="password" id="loginPasswordInput" placeholder="Entrez le mot de passe..." required autocomplete="current-password" />
+          <label for="loginPasswordInput">Mot de passe d'accès (défaut : EMM2026)</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="password" id="loginPasswordInput" placeholder="Entrez le mot de passe..." required autocomplete="current-password" style="flex:1;" />
+            <button type="button" id="btnToggleLoginEye" onclick="togglePasswordVisibility('loginPasswordInput', 'btnToggleLoginEye');" class="btn btn-light" title="Afficher ou masquer le mot de passe" style="padding:7px 10px;">👁️</button>
+          </div>
         </div>
         <div id="loginErrorMsg" style="display:none;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:8px;font-size:12.5px;font-weight:600;"></div>
         <button type="submit" class="btn btn-primary" style="justify-content:center;padding:10px;font-size:14px;">🔓 Se connecter</button>
       </form>
 
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
-        <button type="button" id="btnToggleChangePwd" class="btn btn-light" style="font-size:12px;">🔑 Modifier le mot de passe</button>
-        <button type="button" id="btnForgotPwd" class="btn btn-light" style="font-size:12px;color:#dc2626;">❓ Mot de passe oublié</button>
+        <button type="button" id="btnToggleChangePwd" onclick="toggleChangePwdBox();" class="btn btn-light" style="font-size:12px;">🔑 Modifier le mot de passe</button>
+        <button type="button" id="btnForgotPwd" onclick="handleForgotPassword();" class="btn btn-light" style="font-size:12px;color:#dc2626;">❓ Mot de passe oublié</button>
+        <button type="button" id="btnForceReloadAuth" onclick="forceHardRefreshApp();" class="btn btn-light" style="font-size:12px;">🔄 Actualiser</button>
       </div>
 
-      <form id="changePwdForm" style="display:flex;flex-direction:column;gap:10px;margin-top:12px;padding:12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;">
+      <form id="changePwdForm" onsubmit="return handleChangePasswordSubmit(event);" style="display:flex;flex-direction:column;gap:10px;margin-top:12px;padding:12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;">
         <div class="form-group">
           <label for="oldPwdInput">Mot de passe actuel (EMM2026 après réinitialisation)</label>
-          <input type="password" id="oldPwdInput" placeholder="Mot de passe actuel" />
+          <input type="text" id="oldPwdInput" value="EMM2026" placeholder="Mot de passe actuel" />
         </div>
         <div class="form-group">
           <label for="newPwdInput">Nouveau mot de passe</label>
-          <input type="password" id="newPwdInput" placeholder="Nouveau mot de passe (min. 4 caractères)" />
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="password" id="newPwdInput" placeholder="Nouveau mot de passe (min. 4 caractères)" style="flex:1;" />
+            <button type="button" id="btnToggleNewEye" onclick="togglePasswordVisibility('newPwdInput', 'btnToggleNewEye');" class="btn btn-light" title="Afficher ou masquer le nouveau mot de passe" style="padding:7px 10px;">👁️</button>
+          </div>
         </div>
         <button type="submit" class="btn btn-success" style="justify-content:center;">💾 Enregistrer le nouveau mot de passe</button>
       </form>
@@ -108,7 +115,7 @@
         </select>
         <input type="number" id="inputAnnee" min="2000" max="2100" value="2026" aria-label="Année" />
         <input type="date" id="inputDateRef" aria-label="Date de référence" />
-        <button type="button" id="btnLogout" class="btn btn-danger" title="Verrouiller l'application">🔒 Déconnexion</button>
+        <button type="button" id="btnLogout" onclick="lockAppScreen();" class="btn btn-danger" title="Verrouiller l'application">🔒 Déconnexion</button>
       </div>
     </header>
 
