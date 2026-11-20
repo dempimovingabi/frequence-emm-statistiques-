@@ -310,6 +310,7 @@ function renderAll() {
   renderRapportDetaille();
   renderArchives();
   renderStorageFooterNote();
+  if (typeof applyTypographySettings === "function") applyTypographySettings();
 }
 
 function renderStorageFooterNote() {
@@ -1309,11 +1310,22 @@ function saveForm() {
   closeModal(); renderAll(); alert("✅ Enregistré.");
 }
 
+function applyTypographySettings() {
+  const fontSel = $("#fontSelect"), sizeSel = $("#fontSize");
+  if (!fontSel || !sizeSel) return;
+  const chosenFont = `'${fontSel.value}', sans-serif`;
+  const chosenSize = sizeSel.value + "px";
+  document.body.style.fontFamily = chosenFont;
+  $$(".page, .data-table, .report-block, .synth-section").forEach(el => {
+    el.style.fontFamily = chosenFont;
+    el.style.fontSize = chosenSize;
+  });
+}
+
 function bindPrintOptions() {
   const fontSel = $("#fontSelect"), sizeSel = $("#fontSize");
-  function apply() {
-    document.body.style.fontFamily = `'${fontSel.value}', sans-serif`;
-    $$(".page").forEach(p => p.style.fontSize = sizeSel.value + "px");
-  }
-  fontSel.addEventListener("change", apply); sizeSel.addEventListener("change", apply); apply();
+  if (!fontSel || !sizeSel) return;
+  fontSel.addEventListener("change", applyTypographySettings);
+  sizeSel.addEventListener("change", applyTypographySettings);
+  applyTypographySettings();
 }
