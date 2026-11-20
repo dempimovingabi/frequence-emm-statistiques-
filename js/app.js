@@ -12,6 +12,10 @@ const App = {
   archiveMonthFilter: "ALL"
 };
 
+const AUTH_PWD_KEY = "EMM_RDC_ACCESS_PASSWORD_V1";
+const AUTH_SESSION_KEY = "EMM_RDC_SESSION_UNLOCKED_V1";
+const DEFAULT_APP_PASSWORD = "EMM2026";
+
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 function fmt(n) { if (n === undefined || n === null || n === "") return "0"; const numVal = Number(n); return isNaN(numVal) ? n : numVal.toLocaleString("fr-FR"); }
@@ -19,7 +23,93 @@ function num(v) { const n = Number(v); return isNaN(n) ? 0 : n; }
 function calcTotalCulte(r) { return num(r.culteMembres) + num(r.culteSymp) + num(r.culteNV); }
 function normStr(v) { return String(v || "").trim().toLowerCase(); }
 
+function getStoredPassword() {
+  try {
+    return localStorage.getItem(AUTH_PWD_KEY) || DEFAULT_APP_PASSWORD;
+  } catch (e) {
+    return DEFAULT_APP_PASSWORD;
+  }
+}
+
+function lockAppScreen() {
+  try { sessionStorage.removeItem(AUTH_SESSION_KEY); } catch (e) {}
+  closeMenu();
+  const screen = $("#loginScreen");
+  const inp = $("#loginPasswordInput");
+  const err = $("#loginErrorMsg");
+  if (err) { err.style.display = "none"; err.textContent = ""; }
+  if (inp) inp.value = "";
+  if (screen) screen.style.display = "flex";
+}
+
+function unlockAppScreen() {
+  try { sessionStorage.setItem(AUTH_SESSION_KEY, "1"); } catch (e) {}
+  const screen = $("#loginScreen");
+  if (screen) screen.style.display = "none";
+}
+
+function bindAuthControls() {
+  const screen = $("#loginScreen");
+  const loginForm = $("#loginForm");
+  const pwdInput = $("#loginPasswordInput");
+  const errBox = $("#loginErrorMsg");
+  const btnLogout = $("#btnLogout");
+  const btnToggleChange = $("#btnToggleChangePwd");
+  const changeForm = $("#changePwdForm");
+
+  let isUnlocked = false;
+  try { isUnlocked = sessionStorage.getItem(AUTH_SESSION_KEY) === "1"; } catch (e) {}
+  if (screen) screen.style.display = isUnlocked ? "none" : "flex";
+
+  if (loginForm) {
+    loginForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const entered = (pwdInput?.value || "").trim();
+      if (entered === getStoredPassword()) {
+        if (errBox) errBox.style.display = "none";
+        unlockAppScreen();
+      } else if (errBox) {
+        errBox.textContent = "❌ Mot de passe incorrect. Réessayez.";
+        errBox.style.display = "block";
+      }
+    });
+  }
+
+  if (btnLogout) {
+    btnLogout.addEventListener("click", () => {
+      lockAppScreen();
+    });
+  }
+
+  if (btnToggleChange && changeForm) {
+    btnToggleChange.addEventListener("click", () => {
+      const visible = changeForm.style.display === "flex";
+      changeForm.style.display = visible ? "none" : "flex";
+    });
+  }
+
+  if (changeForm) {
+    changeForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const oldVal = ($("#oldPwdInput")?.value || "").trim();
+      const newVal = ($("#newPwdInput")?.value || "").trim();
+      if (oldVal !== getStoredPassword()) {
+        return alert("❌ L'ancien mot de passe est incorrect.");
+      }
+      if (newVal.length < 4) {
+        return alert("Le nouveau mot de passe doit contenir au moins 4 caractères.");
+      }
+      try { localStorage.setItem(AUTH_PWD_KEY, newVal); } catch (err) {}
+      $("#oldPwdInput").value = "";
+      $("#newPwdInput").value = "";
+      changeForm.style.display = "none";
+      alert("✅ Nouveau mot de passe enregistré avec succès.");
+    });
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  bindAuthControls();
   Store.load();
   syncPeriodeControls();
   updatePeriodeLabel();
@@ -337,24 +427,24 @@ function renderTutoriel() {
   const q = App.searchTerm;
   const sections = [
     {
-      title: "1. Définir la période & vérifier le mode hors ligne",
-      body: "En haut de l'écran, sélectionnez le <strong>Mois</strong>, l'<strong>Année</strong> et la <strong>Date de référence</strong>. En bas du menu latéral, le statut indique si vous êtes <em>En ligne (PWA prête)</em> ou <em>Hors connexion (Mode local)</em> : toutes vos saisies sont enregistrées automatiquement sur l'appareil."
+      title: "1. Connexion, mot de passe & période active",
+      body: "À l'ouverture, entrez le mot de passe d'accès (par défaut <strong>EMM2026</strong>, personnalisable depuis l'écran de connexion). Utilisez le bouton <strong>🔒 Déconnexion</strong> en haut à droite pour verrouiller l'application. Sélectionnez ensuite le <strong>Mois</strong>, l'<strong>Année</strong> et la <strong>Date de référence</strong>."
     },
     {
       title: "2. Répertoire des Entités (par Province)",
-      body: "Ouvrez <strong>🏛️ Répertoire Entités</strong>, choisissez la <strong>Province</strong> (ex. <em>Kasaï-Central</em>), puis cliquez sur <strong>＋ Enregistrer une entité</strong>. Une alerte vous prévient si une entité portant le même nom existe déjà dans la province. Utilisez les boutons sur chaque ligne : <strong>👁️</strong> Aperçu, <strong>✏️</strong> Modifier, <strong>📦</strong> Archiver, <strong>🗑️</strong> Supprimer."
+      body: "Ouvrez <strong>🏛️ Répertoire Entités</strong>, choisissez la <strong>Province</strong> (ex. <em>Kasaï-Central</em>), puis cliquez sur <strong>＋ Enregistrer une entité</strong>. Une alerte vous prévient en cas de doublon. Utilisez les boutons sur chaque ligne : <strong>👁️</strong> Aperçu, <strong>✏️</strong> Modifier, <strong>📦</strong> Archiver, <strong>🗑️</strong> Supprimer."
     },
     {
       title: "3. Saisie & Duplication des Rapports",
-      body: "Rendez-vous dans <strong>💻 Numérique</strong>, <strong>📻 Diffusion</strong> ou <strong>📋 Diffusion Suite</strong>. Cliquez sur <strong>＋ Nouveau</strong> pour saisir un rapport (vous pouvez pré-remplir les informations d'une entité existante) ou sélectionnez une ligne puis cliquez sur <strong>📋 Dupliquer</strong> pour préparer rapidement un nouveau rapport avec les fréquences remises à zéro. Le <strong>Total Culte</strong> se calcule automatiquement."
+      body: "Rendez-vous dans <strong>💻 Numérique</strong>, <strong>📻 Diffusion</strong> ou <strong>📋 Diffusion Suite</strong>. Cliquez sur <strong>＋ Nouveau</strong> pour saisir un rapport ou sélectionnez une ligne puis cliquez sur <strong>📋 Dupliquer</strong> pour reprendre rapidement une entité au mois suivant. Le <strong>Total Culte</strong> se calcule automatiquement."
     },
     {
       title: "4. Tableau de Bord, Synthèse, Rapports & Graphiques",
-      body: "Consultez <strong>📊 Tableau de Bord</strong> pour les indicateurs clés, <strong>📈 Synthèse Nationale</strong> pour le suivi de la <em>Complétude des Rapports par Province</em>, <strong>📑 Rapport Global</strong> et <strong>🗂️ Rapport Détaillé</strong> pour la vue consolidée par province, et <strong>📉 Graphiques</strong> pour comparer les fréquences. Utilisez la barre de recherche en haut pour filtrer."
+      body: "Consultez <strong>📊 Tableau de Bord</strong> pour les indicateurs clés, <strong>📈 Synthèse Nationale</strong> pour la <em>Complétude des Rapports par Province</em>, <strong>📑 Rapport Global</strong> et <strong>🗂️ Rapport Détaillé</strong> pour la vue par province, et <strong>📉 Graphiques</strong> pour comparer les fréquences."
     },
     {
       title: "5. Typographie, Impression PDF, Export CSV & Sauvegarde JSON",
-      body: "Choisissez la <strong>Police</strong> (10 polices disponibles) et la <strong>Taille</strong> (jusqu'à 24 px), puis cliquez sur <strong>🖨️ PDF / Imprimer</strong> pour imprimer ou enregistrer en PDF. Utilisez <strong>📊 CSV</strong> pour exporter le tableau actif vers un tableur, et allez dans <strong>🗄️ Archives</strong> pour restaurer un élément archivé ou faire une sauvegarde complète via <strong>⬇️ Exporter (.json)</strong> / <strong>⬆️ Importer (.json)</strong>."
+      body: "Choisissez la <strong>Police</strong> (10 polices) et la <strong>Taille</strong> (jusqu'à 24 px), puis cliquez sur <strong>🖨️ PDF / Imprimer</strong>. Utilisez <strong>📊 CSV</strong> pour tableur, et allez dans <strong>🗄️ Archives</strong> pour restaurer un élément ou sauvegarder via <strong>⬇️ Exporter (.json)</strong> / <strong>⬆️ Importer (.json)</strong>."
     }
   ].filter(s => !q || (s.title + " " + s.body).toLowerCase().includes(q));
 
@@ -364,7 +454,7 @@ function renderTutoriel() {
         <h3 style="margin:0;">❓ Tutoriel d'utilisation — EMM RD Congo (Gestion Nationale)</h3>
         <button type="button" class="btn btn-dark" id="btnPrintTutoriel">🖨️ Imprimer / PDF ce tutoriel</button>
       </div>
-      <p style="color:#475569;margin-top:0;">Ce guide est disponible même sans connexion internet. Vous pouvez également filtrer les étapes avec la barre de recherche.</p>
+      <p style="color:#475569;margin-top:0;">Ce guide reste accessible même sans connexion internet.</p>
       ${sections.length === 0
         ? `<p style="text-align:center;color:#64748b;padding:16px;">Aucune section du tutoriel ne correspond à votre recherche.</p>`
         : sections.map(s => `
