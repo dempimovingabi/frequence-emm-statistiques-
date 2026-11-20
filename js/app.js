@@ -17,6 +17,7 @@ const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 function fmt(n) { if (n === undefined || n === null || n === "") return "0"; const numVal = Number(n); return isNaN(numVal) ? n : numVal.toLocaleString("fr-FR"); }
 function num(v) { const n = Number(v); return isNaN(n) ? 0 : n; }
 function calcTotalCulte(r) { return num(r.culteMembres) + num(r.culteSymp) + num(r.culteNV); }
+function normStr(v) { return String(v || "").trim().toLowerCase(); }
 
 document.addEventListener("DOMContentLoaded", () => {
   Store.load();
@@ -124,6 +125,60 @@ function goToPage(page) {
   renderAll();
 }
 
+function deleteRecordById(type, id) {
+  if (!type || !id) return;
+  if (!confirm("Supprimer définitivement cet élément ?")) return;
+  Store.remove(type, id);
+  if (App.selectedRowId === id) clearSelection();
+  renderAll();
+}
+
+function archiveRecordById(type, id) {
+  if (!type || !id) return;
+  if (!confirm("Archiver cet élément dans la bibliothèque ?")) return;
+  Store.archive(type, id);
+  if (App.selectedRowId === id) clearSelection();
+  renderAll();
+}
+
+function rowActionButtonsHtml(type, id) {
+  return `
+    <td style="white-space:nowrap;text-align:center;">
+      <button type="button" class="btn btn-eye btn-view-record" data-type="${type}" data-id="${id}" title="Aperçu">👁️</button>
+      <button type="button" class="btn btn-info btn-edit-record" data-type="${type}" data-id="${id}" style="padding:4px 7px;font-size:11px;" title="Modifier">✏️</button>
+      <button type="button" class="btn btn-warning btn-arch-record" data-type="${type}" data-id="${id}" style="padding:4px 7px;font-size:11px;" title="Archiver">📦</button>
+      <button type="button" class="btn btn-danger btn-del-record" data-type="${type}" data-id="${id}" style="padding:4px 7px;font-size:11px;" title="Supprimer">🗑️</button>
+    </td>`;
+}
+
+function bindRowActionButtons(container) {
+  if (!container) return;
+  $$(".btn-view-record", container).forEach(btn => {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      openEyeModal(btn.dataset.type, btn.dataset.id);
+    });
+  });
+  $$(".btn-edit-record", container).forEach(btn => {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      openForm(btn.dataset.type, btn.dataset.id);
+    });
+  });
+  $$(".btn-arch-record", container).forEach(btn => {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      archiveRecordById(btn.dataset.type, btn.dataset.id);
+    });
+  });
+  $$(".btn-del-record", container).forEach(btn => {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      deleteRecordById(btn.dataset.type, btn.dataset.id);
+    });
+  });
+}
+
 function duplicateSelectedRecord() {
   if (!App.selectedRowId || !App.selectedType) {
     return alert("Sélectionnez d'abord une ligne à dupliquer.");
@@ -154,6 +209,7 @@ function duplicateSelectedRecord() {
 
   const created = Store.add(App.selectedType, clone);
   App.selectedRowId = created.id;
+  App.selectedType = App.selectedType;
   renderAll();
   openForm(App.selectedType, created.id);
 }
@@ -216,11 +272,11 @@ function bindActions() {
     });
   }
   $("#btnNouveau").addEventListener("click", () => openFormForCurrentPage(null));
-  $("#btnModifier").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); openFormForCurrentPage(App.selectedRowId); });
+  $("#btnModifier").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); openForm(App.selectedType || "numerique", App.selectedRowId); });
   const btnDup = $("#btnDupliquer");
   if (btnDup) btnDup.addEventListener("click", duplicateSelectedRecord);
-  $("#btnSupprimer").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); if (!confirm("Supprimer ?")) return; Store.remove(App.selectedType, App.selectedRowId); clearSelection(); renderAll(); });
-  $("#btnArchiver").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); if (!confirm("Archiver dans la bibliothèque ?")) return; Store.archive(App.selectedType, App.selectedRowId); clearSelection(); renderAll(); });
+  $("#btnSupprimer").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); deleteRecordById(App.selectedType, App.selectedRowId); });
+  $("#btnArchiver").addEventListener("click", () => { if (!App.selectedRowId) return alert("Sélectionnez une ligne."); archiveRecordById(App.selectedType, App.selectedRowId); });
 
   const actionBar = $(".action-bar");
   if (actionBar && !$("#btnExportCSV")) {
@@ -295,9 +351,7 @@ function renderEntitesPage() {
         <td>${e.responsable || '—'}</td>
         <td>${e.telephone || '—'}</td>
         <td>${e.observations || '—'}</td>
-        <td style="text-align:center;">
-          <button type="button" class="btn btn-eye btn-view-record" data-type="entites" data-id="${e.id}" title="Consulter">👁️</button>
-        </td>
+        ${rowActionButtonsHtml("entites", e.id)}
       </tr>`).join("");
 
   container.innerHTML = `
@@ -313,7 +367,7 @@ function renderEntitesPage() {
     </div>
 
     <div class="report-block">
-      <h3>2. Entités enregistrées — ${prov}</h3>
+      <h3>2. Entités enregistrées — ${prov} (dans l'ordre d'enregistrement)</h3>
       <div class="table-wrapper">
         <table class="data-table" id="tableEntitesProv">
           <thead>
@@ -324,7 +378,7 @@ function renderEntitesPage() {
               <th>Responsable</th>
               <th>Téléphone</th>
               <th>Observations</th>
-              <th>Aperçu</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
@@ -351,20 +405,14 @@ function renderEntitesPage() {
   if (tbl) {
     $$("tbody tr[data-id]", tbl).forEach(tr => {
       tr.addEventListener("click", (ev) => {
-        if (ev.target.closest(".btn-view-record")) return;
+        if (ev.target.closest("button")) return;
         const id = tr.dataset.id;
         if (App.selectedRowId === id) { clearSelection(); } else { App.selectedRowId = id; App.selectedType = "entites"; }
         $$("tbody tr", tbl).forEach(t => t.classList.remove("selected"));
         if (App.selectedRowId) tr.classList.add("selected");
       });
     });
-
-    $$(".btn-view-record", tbl).forEach(btn => {
-      btn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        openEyeModal(btn.dataset.type, btn.dataset.id);
-      });
-    });
+    bindRowActionButtons(tbl);
   }
 }
 
@@ -550,7 +598,7 @@ function renderTable(type) {
     ];
 
   table.innerHTML = `
-    <thead><tr><th>#</th>${cols.map(c => `<th>${c.label}</th>`).join("")}<th>Aperçu</th></tr></thead>
+    <thead><tr><th>#</th>${cols.map(c => `<th>${c.label}</th>`).join("")}<th>Actions</th></tr></thead>
     <tbody>
       ${filtered.length === 0 ? `<tr><td colspan="${cols.length + 2}" style="text-align:center;padding:20px;">Aucune donnée (${filtered.length} entrée).</td></tr>` : ""}
       ${filtered.map((r, i) => {
@@ -562,14 +610,14 @@ function renderTable(type) {
             const txt = c.num ? fmt(v) : (v || '—');
             return `<td class="${c.num ? 'num' : ''}">${c.bold ? `<strong>${txt}</strong>` : txt}</td>`;
           }).join("")}
-          <td style="text-align:center;"><button type="button" class="btn btn-eye btn-view-record" data-type="${type}" data-id="${r.id}" title="Consulter">👁️</button></td>
+          ${rowActionButtonsHtml(type, r.id)}
         </tr>`;
       }).join("")}
     </tbody>`;
 
   $$("tbody tr[data-id]", table).forEach(tr => {
     tr.addEventListener("click", (ev) => {
-      if (ev.target.closest(".btn-view-record")) return;
+      if (ev.target.closest("button")) return;
       const id = tr.dataset.id;
       if (App.selectedRowId === id) { clearSelection(); } else { App.selectedRowId = id; App.selectedType = type; }
       $$("tbody tr", table).forEach(t => t.classList.remove("selected"));
@@ -577,12 +625,7 @@ function renderTable(type) {
     });
   });
 
-  $$(".btn-view-record", table).forEach(btn => {
-    btn.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      openEyeModal(btn.dataset.type, btn.dataset.id);
-    });
-  });
+  bindRowActionButtons(table);
 }
 
 function renderSynthese() {
@@ -617,12 +660,12 @@ function renderSynthese() {
         ...(Store.data.diffusion || []).filter(r => r.province === p && matchesPeriode(r)),
         ...(Store.data.diffusionSuite || []).filter(r => r.province === p && matchesPeriode(r))
       ]
-        .map(r => String(r.denomination || "").trim().toLowerCase())
+        .map(r => normStr(r.denomination))
         .filter(Boolean)
     );
 
     const submittedCount = totalEnt > 0
-      ? provEntites.filter(e => reportedNames.has(String(e.denomination || "").trim().toLowerCase())).length
+      ? provEntites.filter(e => reportedNames.has(normStr(e.denomination))).length
       : reportedNames.size;
 
     const rate = totalEnt > 0 ? Math.round((submittedCount / totalEnt) * 100) : (submittedCount > 0 ? 100 : 0);
@@ -707,75 +750,160 @@ function renderSynthese() {
 }
 
 function renderRapportGlobal() {
+  const matchSearch = (r) => !App.searchTerm || Object.values(r).some(v => String(v).toLowerCase().includes(App.searchTerm));
+  const allEntites = (Store.data.entites || []).filter(matchSearch);
+  const allReports = [
+    ...(Store.data.numerique || []).filter(matchSearch).map(r => ({ ...r, _type: "numerique", _label: "Numérique" })),
+    ...(Store.data.diffusion || []).filter(matchSearch).map(r => ({ ...r, _type: "diffusion", _label: "Diffusion" })),
+    ...(Store.data.diffusionSuite || []).filter(matchSearch).map(r => ({ ...r, _type: "diffusionSuite", _label: "Diffusion Suite" }))
+  ];
+
   let html = "";
-  [{type:"numerique",title:"💻 Numérique"},{type:"diffusion",title:"📻 Diffusion"},{type:"diffusionSuite",title:"📋 Diffusion Suite"}].forEach(s => {
-    const rows = Store.getByType(s.type).filter(r => !App.searchTerm || Object.values(r).some(v => String(v).toLowerCase().includes(App.searchTerm)));
-    const fields = SCHEMAS[s.type].fields;
-    html += `
-      <div class="report-block">
-        <h3>${s.title} (${rows.length})</h3>
-        <div class="table-wrapper">
+
+  // Ordre : Province -> Entités enregistrées (dans l'ordre d'enregistrement) + Rapports de la province
+  PROVINCES.forEach(prov => {
+    const provEntites = allEntites.filter(e => e.province === prov);
+    const provReports = allReports.filter(r => r.province === prov);
+    if (provEntites.length === 0 && provReports.length === 0) return;
+
+    const entitesListHtml = provEntites.length === 0
+      ? `<p style="color:#64748b;font-size:13px;margin:4px 0 12px;">Aucune entité enregistrée pour ${prov}.</p>`
+      : `
+        <div class="table-wrapper" style="margin-bottom:12px;">
           <table class="data-table">
-            <thead><tr>${fields.map(f => `<th>${f.label}</th>`).join("")}<th>Aperçu</th></tr></thead>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Dénomination</th>
+                <th>Type d'entité</th>
+                <th>Responsable</th>
+                <th>Téléphone</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
             <tbody>
-              ${rows.length === 0 ? `<tr><td colspan="${fields.length + 1}" style="text-align:center;">Aucune donnée</td></tr>` : ""}
-              ${rows.map(r => `
+              ${provEntites.map((e, idx) => `
                 <tr>
-                  ${fields.map(f => {
-                    const val = f.key === "totalCulte" ? calcTotalCulte(r) : r[f.key];
-                    const txt = f.type === "number" ? fmt(val) : (val || '—');
-                    return `<td class="${f.type === 'number' ? 'num' : ''}">${f.computed ? `<strong>${txt}</strong>` : txt}</td>`;
-                  }).join("")}
-                  <td style="text-align:center;"><button type="button" class="btn btn-eye btn-view-record" data-type="${s.type}" data-id="${r.id}" title="Consulter">👁️</button></td>
-                </tr>`).join("")}
+                  <td>${idx + 1}</td>
+                  <td><strong>${e.denomination || "—"}</strong></td>
+                  <td>${e.typeEntite || "—"}</td>
+                  <td>${e.responsable || "—"}</td>
+                  <td>${e.telephone || "—"}</td>
+                  ${rowActionButtonsHtml("entites", e.id)}
+                </tr>
+              `).join("")}
             </tbody>
           </table>
-        </div>
+        </div>`;
+
+    const reportsListHtml = provReports.length === 0
+      ? `<p style="color:#64748b;font-size:13px;margin:4px 0 0;">Aucun rapport enregistré pour ${prov}.</p>`
+      : `
+        <div class="table-wrapper" style="margin-bottom:0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Rapport</th>
+                <th>Entité</th>
+                <th>Type</th>
+                <th>Responsable</th>
+                <th>Total Culte</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${provReports.map((r, idx) => {
+                const tot = (r._type === "numerique" || r._type === "diffusion") ? fmt(calcTotalCulte(r)) : "—";
+                return `
+                  <tr>
+                    <td>${idx + 1}</td>
+                    <td>${r._label}</td>
+                    <td><strong>${r.denomination || "—"}</strong></td>
+                    <td>${r.typeEntite || "—"}</td>
+                    <td>${r.responsable || "—"}</td>
+                    <td class="num"><strong>${tot}</strong></td>
+                    <td>${r.dateRapport || "—"}</td>
+                    ${rowActionButtonsHtml(r._type, r.id)}
+                  </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>`;
+
+    html += `
+      <div class="report-block">
+        <h3>📍 Province : ${prov} (${provEntites.length} entité(s) • ${provReports.length} rapport(s))</h3>
+        <div style="font-weight:700;color:#15803d;font-size:13px;margin-bottom:6px;">Entités enregistrées (${prov})</div>
+        ${entitesListHtml}
+        <div style="font-weight:700;color:#1e3a8a;font-size:13px;margin-bottom:6px;">Rapports de la province (${prov})</div>
+        ${reportsListHtml}
       </div>`;
   });
-  $("#rapportGlobal").innerHTML = html;
 
-  $$(".btn-view-record", $("#rapportGlobal")).forEach(btn => {
-    btn.addEventListener("click", () => openEyeModal(btn.dataset.type, btn.dataset.id));
-  });
+  if (!html) {
+    html = `<div class="report-block"><p style="text-align:center;">Aucune donnée enregistrée pour le moment.</p></div>`;
+  }
+
+  $("#rapportGlobal").innerHTML = html;
+  bindRowActionButtons($("#rapportGlobal"));
 }
 
 function renderRapportDetaille() {
   const all = [
-    ...Store.data.numerique.map(r => ({...r, _src:"numerique"})),
-    ...Store.data.diffusion.map(r => ({...r, _src:"diffusion"})),
-    ...Store.data.diffusionSuite.map(r => ({...r, _src:"diffusionSuite"}))
+    ...(Store.data.entites || []).map(r => ({ ...r, _src: "entites" })),
+    ...(Store.data.numerique || []).map(r => ({ ...r, _src: "numerique" })),
+    ...(Store.data.diffusion || []).map(r => ({ ...r, _src: "diffusion" })),
+    ...(Store.data.diffusionSuite || []).map(r => ({ ...r, _src: "diffusionSuite" }))
   ].filter(r => !App.searchTerm || Object.values(r).some(v => String(v).toLowerCase().includes(App.searchTerm)));
 
-  if (all.length === 0) { $("#rapportDetaille").innerHTML = `<div class="report-block"><p style="text-align:center;">Aucune donnée.</p></div>`; return; }
+  if (all.length === 0) {
+    $("#rapportDetaille").innerHTML = `<div class="report-block"><p style="text-align:center;">Aucune donnée.</p></div>`;
+    return;
+  }
 
   let html = "";
-  all.forEach(r => {
-    const schema = SCHEMAS[r._src];
+  PROVINCES.forEach(prov => {
+    const provItems = all.filter(r => r.province === prov);
+    if (!provItems.length) return;
+
+    const cardsHtml = provItems.map(r => {
+      const schema = SCHEMAS[r._src];
+      return `
+        <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:10px;background:#f8fafc;">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+            <strong style="color:#0f172a;">${r.denomination || "(sans nom)"} <span style="font-weight:500;color:#475569;">(${schema.title} • ${r.typeEntite || "—"})</span></strong>
+            <div style="white-space:nowrap;">
+              <button type="button" class="btn btn-eye btn-view-record" data-type="${r._src}" data-id="${r.id}" title="Aperçu">👁️</button>
+              <button type="button" class="btn btn-info btn-edit-record" data-type="${r._src}" data-id="${r.id}" style="padding:4px 7px;font-size:11px;" title="Modifier">✏️</button>
+              <button type="button" class="btn btn-warning btn-arch-record" data-type="${r._src}" data-id="${r.id}" style="padding:4px 7px;font-size:11px;" title="Archiver">📦</button>
+              <button type="button" class="btn btn-danger btn-del-record" data-type="${r._src}" data-id="${r.id}" style="padding:4px 7px;font-size:11px;" title="Supprimer">🗑️</button>
+            </div>
+          </div>
+          <div class="table-wrapper" style="margin-bottom:0;">
+            <table class="data-table">
+              <tbody>
+                ${schema.fields.filter(f => f.computed || (r[f.key] !== undefined && r[f.key] !== "")).map(f => {
+                  const val = f.key === "totalCulte" ? calcTotalCulte(r) : r[f.key];
+                  const txt = f.type === 'number' ? fmt(val) : val;
+                  return `<tr><th style="width:40%;background:#ffffff;color:#334155;">${f.label}</th><td>${f.computed ? `<strong>${txt}</strong>` : txt}</td></tr>`;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }).join("");
+
     html += `
       <div class="report-block">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
-          <h3 style="margin:0;">${schema.title} — ${r.denomination || "(sans nom)"} <small>(${r.typeEntite || '—'} • ${r.province || '—'})</small></h3>
-          <button type="button" class="btn btn-eye btn-view-record" data-type="${r._src}" data-id="${r.id}" title="Ouvrir la fiche">👁️ Voir</button>
-        </div>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <tbody>
-              ${schema.fields.filter(f => f.computed || (r[f.key] !== undefined && r[f.key] !== "")).map(f => {
-                const val = f.key === "totalCulte" ? calcTotalCulte(r) : r[f.key];
-                const txt = f.type === 'number' ? fmt(val) : val;
-                return `<tr><th style="width:40%;background:#f1f5f9;color:#334155;">${f.label}</th><td>${f.computed ? `<strong>${txt}</strong>` : txt}</td></tr>`;
-              }).join("")}
-            </tbody>
-          </table>
-        </div>
+        <h3>📍 ${prov} (${provItems.length})</h3>
+        ${cardsHtml}
       </div>`;
   });
-  $("#rapportDetaille").innerHTML = html;
 
-  $$(".btn-view-record", $("#rapportDetaille")).forEach(btn => {
-    btn.addEventListener("click", () => openEyeModal(btn.dataset.type, btn.dataset.id));
-  });
+  $("#rapportDetaille").innerHTML = html;
+  bindRowActionButtons($("#rapportDetaille"));
 }
 
 function exportBackupJSON() {
@@ -1007,6 +1135,16 @@ function openFormForCurrentPage(editId) {
   openForm(type, editId, prefill);
 }
 
+function findDuplicateEntity(provVal, denomVal, excludeId) {
+  const target = normStr(denomVal);
+  if (!provVal || !target) return null;
+  return (Store.data.entites || []).find(e =>
+    e.id !== excludeId &&
+    e.province === provVal &&
+    normStr(e.denomination) === target
+  ) || null;
+}
+
 function openForm(type, editId, prefill = {}) {
   App.currentFormType = type;
   App.editingId = editId;
@@ -1076,14 +1214,10 @@ function openForm(type, editId, prefill = {}) {
 
     if (type === "entites") {
       const provVal = $("#fld_province")?.value || "";
-      const denomVal = ($("#fld_denomination")?.value || "").trim().toLowerCase();
-      if (denomVal) {
-        const dup = (Store.data.entites || []).some(e =>
-          e.id !== App.editingId &&
-          e.province === provVal &&
-          String(e.denomination || "").trim().toLowerCase() === denomVal
-        );
-        if (dup) msgs.push(`⚠️ Une entité nommée "${$("#fld_denomination").value.trim()}" existe déjà en ${provVal}.`);
+      const rawDenom = $("#fld_denomination")?.value || "";
+      const dup = findDuplicateEntity(provVal, rawDenom, App.editingId);
+      if (dup) {
+        msgs.push(`⚠️ Doublon détecté : "${rawDenom.trim()}" est déjà enregistré dans la province ${provVal}.`);
       }
     } else if (type === "numerique") {
       const actifsVal = num($("#fld_actifs")?.value);
@@ -1117,7 +1251,10 @@ function openForm(type, editId, prefill = {}) {
   });
   ["province", "denomination", "actifs"].forEach(k => {
     const el = $("#fld_" + k);
-    if (el) el.addEventListener("input", refreshFormHint);
+    if (el) {
+      el.addEventListener("input", refreshFormHint);
+      el.addEventListener("change", refreshFormHint);
+    }
   });
   updateCulteTotal();
   refreshFormHint();
@@ -1150,6 +1287,16 @@ function saveForm() {
   });
   if (!valid) return alert("Remplissez les champs obligatoires (*).");
   if (hasNegative) return alert("Les valeurs numériques ne peuvent pas être négatives.");
+
+  if (type === "entites") {
+    const dup = findDuplicateEntity(data.province, data.denomination, App.editingId);
+    if (dup) {
+      alert(`⚠️ Attention : l'entité "${data.denomination}" existe déjà dans la province ${data.province}.`);
+      const proceed = confirm("Voulez-vous quand même enregistrer ce nom une deuxième fois dans cette province ?");
+      if (!proceed) return;
+    }
+  }
+
   if (type === "numerique" || type === "diffusion") {
     data.totalCulte = calcTotalCulte(data);
   }
