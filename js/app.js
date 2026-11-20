@@ -309,6 +309,7 @@ function renderAll() {
   renderRapportGlobal();
   renderRapportDetaille();
   renderArchives();
+  renderTutoriel();
   renderStorageFooterNote();
   if (typeof applyTypographySettings === "function") applyTypographySettings();
 }
@@ -327,6 +328,56 @@ function renderStorageFooterNote() {
   const repCount = (Store.data.numerique || []).length + (Store.data.diffusion || []).length + (Store.data.diffusionSuite || []).length;
   const archCount = (Store.data.archives || []).length;
   note.textContent = `${entCount} entité(s) • ${repCount} rapport(s) • ${archCount} archive(s)`;
+}
+
+function renderTutoriel() {
+  const container = $("#tutorielContent");
+  if (!container) return;
+
+  const q = App.searchTerm;
+  const sections = [
+    {
+      title: "1. Définir la période & vérifier le mode hors ligne",
+      body: "En haut de l'écran, sélectionnez le <strong>Mois</strong>, l'<strong>Année</strong> et la <strong>Date de référence</strong>. En bas du menu latéral, le statut indique si vous êtes <em>En ligne (PWA prête)</em> ou <em>Hors connexion (Mode local)</em> : toutes vos saisies sont enregistrées automatiquement sur l'appareil."
+    },
+    {
+      title: "2. Répertoire des Entités (par Province)",
+      body: "Ouvrez <strong>🏛️ Répertoire Entités</strong>, choisissez la <strong>Province</strong> (ex. <em>Kasaï-Central</em>), puis cliquez sur <strong>＋ Enregistrer une entité</strong>. Une alerte vous prévient si une entité portant le même nom existe déjà dans la province. Utilisez les boutons sur chaque ligne : <strong>👁️</strong> Aperçu, <strong>✏️</strong> Modifier, <strong>📦</strong> Archiver, <strong>🗑️</strong> Supprimer."
+    },
+    {
+      title: "3. Saisie & Duplication des Rapports",
+      body: "Rendez-vous dans <strong>💻 Numérique</strong>, <strong>📻 Diffusion</strong> ou <strong>📋 Diffusion Suite</strong>. Cliquez sur <strong>＋ Nouveau</strong> pour saisir un rapport (vous pouvez pré-remplir les informations d'une entité existante) ou sélectionnez une ligne puis cliquez sur <strong>📋 Dupliquer</strong> pour préparer rapidement un nouveau rapport avec les fréquences remises à zéro. Le <strong>Total Culte</strong> se calcule automatiquement."
+    },
+    {
+      title: "4. Tableau de Bord, Synthèse, Rapports & Graphiques",
+      body: "Consultez <strong>📊 Tableau de Bord</strong> pour les indicateurs clés, <strong>📈 Synthèse Nationale</strong> pour le suivi de la <em>Complétude des Rapports par Province</em>, <strong>📑 Rapport Global</strong> et <strong>🗂️ Rapport Détaillé</strong> pour la vue consolidée par province, et <strong>📉 Graphiques</strong> pour comparer les fréquences. Utilisez la barre de recherche en haut pour filtrer."
+    },
+    {
+      title: "5. Typographie, Impression PDF, Export CSV & Sauvegarde JSON",
+      body: "Choisissez la <strong>Police</strong> (10 polices disponibles) et la <strong>Taille</strong> (jusqu'à 24 px), puis cliquez sur <strong>🖨️ PDF / Imprimer</strong> pour imprimer ou enregistrer en PDF. Utilisez <strong>📊 CSV</strong> pour exporter le tableau actif vers un tableur, et allez dans <strong>🗄️ Archives</strong> pour restaurer un élément archivé ou faire une sauvegarde complète via <strong>⬇️ Exporter (.json)</strong> / <strong>⬆️ Importer (.json)</strong>."
+    }
+  ].filter(s => !q || (s.title + " " + s.body).toLowerCase().includes(q));
+
+  container.innerHTML = `
+    <div class="report-block">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
+        <h3 style="margin:0;">❓ Tutoriel d'utilisation — EMM RD Congo (Gestion Nationale)</h3>
+        <button type="button" class="btn btn-dark" id="btnPrintTutoriel">🖨️ Imprimer / PDF ce tutoriel</button>
+      </div>
+      <p style="color:#475569;margin-top:0;">Ce guide est disponible même sans connexion internet. Vous pouvez également filtrer les étapes avec la barre de recherche.</p>
+      ${sections.length === 0
+        ? `<p style="text-align:center;color:#64748b;padding:16px;">Aucune section du tutoriel ne correspond à votre recherche.</p>`
+        : sections.map(s => `
+          <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px;background:#f8fafc;">
+            <h4 style="margin:0 0 6px;color:#1e3a8a;font-size:14px;">${s.title}</h4>
+            <p style="margin:0;line-height:1.5;color:#1e293b;">${s.body}</p>
+          </div>`).join("")}
+    </div>`;
+
+  const btnPrintTut = $("#btnPrintTutoriel");
+  if (btnPrintTut) {
+    btnPrintTut.addEventListener("click", () => window.print());
+  }
 }
 
 function renderEntitesPage() {
