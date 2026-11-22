@@ -313,6 +313,25 @@ function getPageTitleLabel(page) {
   return map[page] || page;
 }
 
+function buildBackBarHtml(prevPage, currentPage) {
+  return `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-light btn-back-module" style="font-weight:700;border:1px solid #94a3b8;">← Retour (${getPageTitleLabel(prevPage)})</button>
+      ${prevPage !== "dashboard" ? `<button type="button" class="btn btn-light btn-back-dashboard" style="font-size:12px;">🏠 Tableau de Bord</button>` : ""}
+    </div>
+    <span style="font-size:12.5px;font-weight:700;color:#1e3a8a;">Module actif : ${getPageTitleLabel(currentPage)}</span>`;
+}
+
+function bindBackButtons(container) {
+  if (!container) return;
+  $$(".btn-back-module", container).forEach(btn => {
+    btn.addEventListener("click", goBackPage);
+  });
+  $$(".btn-back-dashboard", container).forEach(btn => {
+    btn.addEventListener("click", () => goToPage("dashboard", false));
+  });
+}
+
 function renderBackBar() {
   const mainEl = $("main.content");
   if (!mainEl) return;
@@ -331,21 +350,8 @@ function renderBackBar() {
   }
 
   const prevPage = App.pageHistory.length > 0 ? App.pageHistory[App.pageHistory.length - 1] : "dashboard";
-  bar.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <button type="button" id="btnBackModule" class="btn btn-light" style="font-weight:700;border:1px solid #94a3b8;">← Retour (${getPageTitleLabel(prevPage)})</button>
-      ${prevPage !== "dashboard" ? `<button type="button" id="btnBackDashboard" class="btn btn-light" style="font-size:12px;">🏠 Tableau de Bord</button>` : ""}
-    </div>
-    <span style="font-size:12.5px;font-weight:700;color:#1e3a8a;">Module actif : ${getPageTitleLabel(App.currentPage)}</span>`;
-
-  const btnBack = $("#btnBackModule", bar);
-  if (btnBack) {
-    btnBack.addEventListener("click", goBackPage);
-  }
-  const btnDash = $("#btnBackDashboard", bar);
-  if (btnDash) {
-    btnDash.addEventListener("click", () => goToPage("dashboard", false));
-  }
+  bar.innerHTML = buildBackBarHtml(prevPage, App.currentPage);
+  bindBackButtons(bar);
 }
 
 function goBackPage() {
@@ -580,6 +586,12 @@ function renderTutoriel() {
   const container = $("#tutorielContent");
   if (!container) return;
 
+  const prevPage = App.pageHistory.length > 0 ? App.pageHistory[App.pageHistory.length - 1] : "dashboard";
+  const tutoTopBackBar = `
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;padding:8px 12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;">
+      ${buildBackBarHtml(prevPage, "tutoriel")}
+    </div>`;
+
   const q = App.searchTerm;
   const sections = [
     {
@@ -668,7 +680,13 @@ function renderTutoriel() {
       </div>
     </div>`;
 
+  const tutoBottomBackBar = `
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding:8px 12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;">
+      ${buildBackBarHtml(prevPage, "tutoriel")}
+    </div>`;
+
   container.innerHTML = `
+    ${tutoTopBackBar}
     <div class="report-block">
       <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
         <h3 style="margin:0;">❓ Tutoriel Texte & Guide Pratique — EMM RD Congo (Gestion Nationale)</h3>
@@ -683,7 +701,10 @@ function renderTutoriel() {
             <p style="margin:0;line-height:1.5;color:#1e293b;">${s.body}</p>
           </div>`).join("")}
     </div>
-    ${visualDiagramHtml}`;
+    ${visualDiagramHtml}
+    ${tutoBottomBackBar}`;
+
+  bindBackButtons(container);
 
   const btnPrintTut = $("#btnPrintTutoriel");
   if (btnPrintTut) {
