@@ -9,7 +9,6 @@
   "background_color": "#14532d",
   "theme_color": "#15803d",
   "lang": "fr",
-  "categories": ["productivity", "business", "utilities"],
   "icons": [
     {
       "src": "./icon-192.png",
