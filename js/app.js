@@ -1878,3 +1878,36 @@ function bindPrintOptions() {
   sizeSel.addEventListener("change", applyTypographySettings);
   applyTypographySettings();
 }
+
+window.addEventListener("popstate", () => {
+  const modal = document.getElementById("modal");
+  if (modal && modal.classList.contains("show")) {
+    closeModal();
+    return;
+  }
+  const sidebar = document.getElementById("sidebar");
+  if (sidebar && sidebar.classList.contains("open")) {
+    closeMenu();
+    return;
+  }
+  if (App.currentPage !== "dashboard") {
+    goBackPage();
+  }
+});
+
+document.addEventListener("backbutton", (e) => {
+  e.preventDefault();
+  const modal = document.getElementById("modal");
+  if (modal && modal.classList.contains("show")) {
+    closeModal();
+    return;
+  }
+  const sidebar = document.getElementById("sidebar");
+  if (sidebar && sidebar.classList.contains("open")) {
+    closeMenu();
+    return;
+  }
+  if (App.currentPage !== "dashboard") {
+    goBackPage();
+  }
+}, false);
