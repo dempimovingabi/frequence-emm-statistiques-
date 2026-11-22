@@ -26,10 +26,53 @@ function num(v) { const n = Number(v); return isNaN(n) ? 0 : n; }
 function calcTotalCulte(r) { return num(r.culteMembres) + num(r.culteSymp) + num(r.culteNV); }
 function normStr(v) { return String(v || "").trim().toLowerCase(); }
 
-function getLogoSrcForSplash() {
-  const existingLogo = document.querySelector(".brand-logo, .login-logo, img[alt*='logo' i], img[src*='logo' i]");
-  if (existingLogo && existingLogo.src) return existingLogo.src;
-  return "logo.png";
+function getLogoCandidatesForSplash() {
+  const candidates = [];
+  const imgs = Array.from(document.querySelectorAll("img"));
+  for (const img of imgs) {
+    if (img.closest && img.closest("#emmSplashScreen")) continue;
+    const src = img.getAttribute("src") || img.src || "";
+    if (src && !candidates.includes(src)) {
+      candidates.push(src);
+    }
+  }
+  ["./logo.png", "logo.png", "./assets/logo.png", "./img/logo.png", "./icons/icon-512.png", "./icons/icon-192.png"].forEach(p => {
+    if (!candidates.includes(p)) candidates.push(p);
+  });
+  return candidates;
+}
+
+function setSplashLogoSource(splashEl) {
+  const imgEl = splashEl ? splashEl.querySelector(".splash-logo-img") : null;
+  const fallbackEl = splashEl ? splashEl.querySelector(".splash-logo-fallback") : null;
+  if (!imgEl || !fallbackEl) return;
+
+  const candidates = getLogoCandidatesForSplash();
+  let idx = 0;
+
+  fallbackEl.style.display = "none";
+  imgEl.style.display = "none";
+
+  const tryNext = () => {
+    if (idx >= candidates.length) {
+      imgEl.style.display = "none";
+      fallbackEl.style.display = "block";
+      return;
+    }
+    const nextSrc = candidates[idx++];
+    imgEl.onload = () => {
+      if (imgEl.naturalWidth > 0) {
+        imgEl.style.display = "block";
+        fallbackEl.style.display = "none";
+      } else {
+        tryNext();
+      }
+    };
+    imgEl.onerror = tryNext;
+    imgEl.src = nextSrc;
+  };
+
+  tryNext();
 }
 
 function ensureSplashScreen() {
@@ -139,11 +182,10 @@ function ensureSplashScreen() {
 
     splash = document.createElement("div");
     splash.id = "emmSplashScreen";
-    const logoSrc = getLogoSrcForSplash();
     splash.innerHTML = `
       <div class="splash-logo-wrap">
-        <img src="${logoSrc}" alt="Logo Église Messianique Mondiale" class="splash-logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-        <span class="splash-logo-fallback" style="display:none;">🌿</span>
+        <img alt="Logo Église Messianique Mondiale" class="splash-logo-img" style="display:none;">
+        <span class="splash-logo-fallback">🌿</span>
       </div>
       <div class="splash-title-line1">ÉGLISE MESSIANIQUE</div>
       <div class="splash-title-line2">MONDIALE</div>
@@ -152,11 +194,13 @@ function ensureSplashScreen() {
     `;
     document.body.appendChild(splash);
   }
+  setSplashLogoSource(splash);
   return splash;
 }
 
 function playSplashAnimation(durationMs = SPLASH_DURATION_MS) {
   const splash = ensureSplashScreen();
+  setSplashLogoSource(splash);
   splash.classList.remove("is-hiding");
   splash.style.display = "flex";
 
@@ -225,6 +269,33 @@ function unlockAppScreen() {
   try { sessionStorage.setItem(AUTH_SESSION_KEY, "1"); } catch (e) {}
   const screen = document.getElementById("loginScreen");
   if (screen) screen.style.display = "none";
+}
+
+function ensureLogoutButtons() {
+  const topbar = document.querySelector(".topbar");
+  if (topbar && !document.getElementById("btnTopbarLogout")) {
+    const btnTop = document.createElement("button");
+    btnTop.type = "button";
+    btnTop.id = "btnTopbarLogout";
+    btnTop.className = "btn btn-danger btn-sm";
+    btnTop.textContent = "🚪 Déconnexion";
+    btnTop.title = "Verrouiller et se déconnecter";
+    btnTop.addEventListener("click", lockAppScreen);
+    topbar.appendChild(btnTop);
+  }
+
+  const footer = document.querySelector(".sidebar-footer");
+  if (footer && !document.getElementById("btnSidebarLogout")) {
+    const btnSide = document.createElement("button");
+    btnSide.type = "button";
+    btnSide.id = "btnSidebarLogout";
+    btnSide.className = "btn btn-danger btn-sm";
+    btnSide.style.width = "100%";
+    btnSide.style.marginTop = "6px";
+    btnSide.textContent = "🚪 Déconnexion";
+    btnSide.addEventListener("click", lockAppScreen);
+    footer.appendChild(btnSide);
+  }
 }
 
 function toggleChangePwdBox() {
@@ -353,6 +424,7 @@ initAuthState();
 document.addEventListener("DOMContentLoaded", () => {
   playSplashAnimation(SPLASH_DURATION_MS);
   initAuthState();
+  ensureLogoutButtons();
   Store.load();
   syncPeriodeControls();
   updatePeriodeLabel();
@@ -667,6 +739,7 @@ function exportCSVForCurrentView() {
 }
 
 function bindActions() {
+  ensureLogoutButtons();
   $("#searchInput").addEventListener("input", (e) => { App.searchTerm = e.target.value.toLowerCase(); renderAll(); });
   const btnClear = $("#btnClearSearch");
   if (btnClear) {
@@ -704,6 +777,7 @@ function bindActions() {
 function clearSelection() { App.selectedRowId = null; App.selectedType = null; }
 
 function renderAll() {
+  ensureLogoutButtons();
   renderDashboard();
   renderEntitesPage();
   renderGraphiques();
@@ -728,7 +802,7 @@ function renderStorageFooterNote() {
     note = document.createElement("small");
     note.id = "storageSummaryNote";
     note.style.color = "#94a3b8";
-    footer.insertBefore(note, footer.lastElementChild);
+    footer.insertBefore(note, footer.firstElementChild);
   }
   const entCount = (Store.data.entites || []).length;
   const repCount = (Store.data.numerique || []).length + (Store.data.diffusion || []).length + (Store.data.diffusionSuite || []).length;
