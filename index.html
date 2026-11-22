@@ -163,6 +163,12 @@
             <option value="24">24 px</option>
           </select>
         </label>
+        <label>Orientation :
+          <select id="printOrientation">
+            <option value="portrait" selected>Portrait</option>
+            <option value="landscape">Paysage</option>
+          </select>
+        </label>
       </div>
     </div>
 
@@ -232,13 +238,13 @@
   </div>
 
   <div id="modal" class="modal">
-    <div class="modal-card">
+    <div class="modal-card" id="modalCardBox">
       <div class="modal-header">
         <h3 id="modalTitle">Formulaire</h3>
         <button type="button" id="btnCloseModal" class="icon-btn">✕</button>
       </div>
       <div id="modalBody" class="modal-body"></div>
-      <div class="modal-footer">
+      <div class="modal-footer" id="modalFooterBox">
         <button type="button" id="btnCancel" class="btn btn-light">Annuler</button>
         <button type="button" id="btnSave" class="btn btn-success">💾 Enregistrer</button>
       </div>
