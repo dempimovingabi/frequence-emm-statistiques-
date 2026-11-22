@@ -1,5 +1,6 @@
 const App = {
   currentPage: "dashboard",
+  pageHistory: [],
   selectedRowId: null,
   selectedType: null,
   editingId: null,
@@ -207,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindActions();
   bindPrintOptions();
   renderAll();
-  goToPage("dashboard");
+  goToPage("dashboard", false);
 });
 
 function syncPeriodeControls() {
@@ -294,13 +295,79 @@ function bindNavigation() {
 }
 function openMenu() { $("#sidebar").classList.add("open"); $("#overlay").classList.add("show"); }
 function closeMenu() { $("#sidebar").classList.remove("open"); $("#overlay").classList.remove("show"); }
-function goToPage(page) {
+
+function getPageTitleLabel(page) {
+  const map = {
+    dashboard: "📊 Tableau de Bord",
+    entites: "🏛️ Répertoire Entités",
+    numerique: "💻 Numérique",
+    diffusion: "📻 Diffusion",
+    "diffusion-suite": "📋 Diffusion Suite",
+    synthese: "📈 Synthèse Nationale",
+    "rapport-global": "📑 Rapport Global",
+    "rapport-detaille": "🗂️ Rapport Détaillé",
+    graphiques: "📉 Graphiques",
+    archives: "🗄️ Archives",
+    tutoriel: "❓ Tutoriel"
+  };
+  return map[page] || page;
+}
+
+function renderBackBar() {
+  const mainEl = $("main.content");
+  if (!mainEl) return;
+
+  let bar = $("#moduleBackBar", mainEl);
+  if (App.currentPage === "dashboard") {
+    if (bar) bar.remove();
+    return;
+  }
+
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "moduleBackBar";
+    bar.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding:8px 12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;";
+    mainEl.insertBefore(bar, mainEl.firstChild);
+  }
+
+  const prevPage = App.pageHistory.length > 0 ? App.pageHistory[App.pageHistory.length - 1] : "dashboard";
+  bar.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button type="button" id="btnBackModule" class="btn btn-light" style="font-weight:700;border:1px solid #94a3b8;">← Retour (${getPageTitleLabel(prevPage)})</button>
+      ${prevPage !== "dashboard" ? `<button type="button" id="btnBackDashboard" class="btn btn-light" style="font-size:12px;">🏠 Tableau de Bord</button>` : ""}
+    </div>
+    <span style="font-size:12.5px;font-weight:700;color:#1e3a8a;">Module actif : ${getPageTitleLabel(App.currentPage)}</span>`;
+
+  const btnBack = $("#btnBackModule", bar);
+  if (btnBack) {
+    btnBack.addEventListener("click", goBackPage);
+  }
+  const btnDash = $("#btnBackDashboard", bar);
+  if (btnDash) {
+    btnDash.addEventListener("click", () => goToPage("dashboard", false));
+  }
+}
+
+function goBackPage() {
+  if (App.pageHistory.length > 0) {
+    const target = App.pageHistory.pop();
+    goToPage(target, false);
+  } else {
+    goToPage("dashboard", false);
+  }
+}
+
+function goToPage(page, recordHistory = true) {
+  if (recordHistory && App.currentPage && App.currentPage !== page) {
+    App.pageHistory.push(App.currentPage);
+  }
   App.currentPage = page;
   $$(".page").forEach(p => p.classList.remove("active"));
   const el = $("#page-" + page);
   if (el) el.classList.add("active");
   $$(".nav-link").forEach(a => a.classList.toggle("active", a.dataset.page === page));
   renderAll();
+  renderBackBar();
 }
 
 function deleteRecordById(type, id) {
@@ -489,6 +556,7 @@ function renderAll() {
   renderArchives();
   renderTutoriel();
   renderStorageFooterNote();
+  renderBackBar();
   if (typeof applyTypographySettings === "function") applyTypographySettings();
 }
 
