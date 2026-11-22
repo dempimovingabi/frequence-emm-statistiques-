@@ -1,29 +1,30 @@
 {
-  "name": "EMM RD Congo — Gestion Nationale",
-  "short_name": "EMM RD Congo",
-  "description": "Application de gestion nationale, suivi des entités, rapports numériques et de diffusion, synthèse et archivage hors-ligne.",
-  "start_url": "./",
+  "name": "Église Messianique Mondiale — Gestion Nationale",
+  "short_name": "EMM Mondiale",
+  "description": "Application de gestion nationale, répertoire des entités et rapports mensuels — Église Messianique Mondiale (RD Congo).",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "any",
-  "background_color": "#0f172a",
-  "theme_color": "#1e3a8a",
+  "orientation": "portrait-primary",
+  "background_color": "#14532d",
+  "theme_color": "#15803d",
   "lang": "fr",
+  "categories": ["productivity", "business", "utilities"],
   "icons": [
     {
-      "src": "./icon-192.png",
+      "src": "logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icon-512.png",
+      "src": "logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icon-512.png",
+      "src": "logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
