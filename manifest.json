@@ -1,13 +1,12 @@
 {
-  "id": "./",
   "name": "EMM RD Congo — Gestion Nationale",
-  "short_name": "EMM RDC",
-  "description": "Application de gestion nationale et suivi statistique EMM RD Congo",
-  "start_url": "./index.html",
+  "short_name": "EMM RD Congo",
+  "description": "Application de gestion nationale, suivi des entités, rapports numériques et de diffusion, synthèse et archivage hors-ligne.",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#ffffff",
+  "background_color": "#0f172a",
   "theme_color": "#1e3a8a",
   "lang": "fr",
   "icons": [
@@ -21,7 +20,13 @@
       "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
