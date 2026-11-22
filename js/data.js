@@ -93,6 +93,8 @@ const SCHEMAS = {
 const STORAGE_KEY = "EMM_RDC_GESTION_NATIONALE_V1";
 
 const Store = {
+  _memoryFallback: null,
+  _quotaWarned: false,
   data: {
     periode: { mois: "NOVEMBRE", annee: 2026, dateReference: "2026-11-20" },
     entites: [],
@@ -114,12 +116,32 @@ const Store = {
           diffusionSuite: [],
           archives: []
         }, parsed);
+      } else if (this._memoryFallback) {
+        this.data = JSON.parse(this._memoryFallback);
       }
-    } catch (e) { console.error("Erreur chargement localStorage :", e); }
+    } catch (e) {
+      console.error("Erreur chargement stockage local :", e);
+      if (this._memoryFallback) {
+        try { this.data = JSON.parse(this._memoryFallback); } catch (_) {}
+      }
+    }
     this.save();
   },
   save() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data)); } catch (e) { console.error("Erreur sauvegarde localStorage :", e); }
+    const serialized = JSON.stringify(this.data);
+    this._memoryFallback = serialized;
+    try {
+      localStorage.setItem(STORAGE_KEY, serialized);
+      this._quotaWarned = false;
+    } catch (e) {
+      console.error("Erreur sauvegarde localStorage :", e);
+      if (!this._quotaWarned) {
+        this._quotaWarned = true;
+        if (typeof alert === "function") {
+          alert("⚠️ Attention : l'espace de stockage local du navigateur est plein ou restreint. Vos modifications restent actives en mémoire, mais exportez une sauvegarde (.json) depuis l'onglet Archives dès que possible.");
+        }
+      }
+    }
   },
   getByType(type) { return this.data[type] || []; },
   add(type, item) {
