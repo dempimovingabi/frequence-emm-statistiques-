@@ -27,19 +27,12 @@ function calcTotalCulte(r) { return num(r.culteMembres) + num(r.culteSymp) + num
 function normStr(v) { return String(v || "").trim().toLowerCase(); }
 
 function getLogoCandidatesForSplash() {
-  const candidates = [];
-  const imgs = Array.from(document.querySelectorAll("img"));
-  for (const img of imgs) {
-    if (img.closest && img.closest("#emmSplashScreen")) continue;
-    const src = img.getAttribute("src") || img.src || "";
-    if (src && !candidates.includes(src)) {
-      candidates.push(src);
-    }
-  }
-  ["./logo.png", "logo.png", "./assets/logo.png", "./img/logo.png", "./icons/icon-512.png", "./icons/icon-192.png"].forEach(p => {
-    if (!candidates.includes(p)) candidates.push(p);
-  });
-  return candidates;
+  return [
+    "./assets/img/logo-emm.png",
+    "./icon-512.png",
+    "./icon-192.png",
+    "./logo.png"
+  ];
 }
 
 function setSplashLogoSource(splashEl) {
