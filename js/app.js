@@ -17,6 +17,7 @@ const AUTH_PWD_KEY = "EMM_RDC_ACCESS_PASSWORD_V1";
 const AUTH_RESET_DONE_KEY = "EMM_RDC_PWD_RESET_V22";
 const AUTH_SESSION_KEY = "EMM_RDC_SESSION_UNLOCKED_V1";
 const DEFAULT_APP_PASSWORD = "EMM2026";
+const SPLASH_DURATION_MS = 3000;
 
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
@@ -24,6 +25,158 @@ function fmt(n) { if (n === undefined || n === null || n === "") return "0"; con
 function num(v) { const n = Number(v); return isNaN(n) ? 0 : n; }
 function calcTotalCulte(r) { return num(r.culteMembres) + num(r.culteSymp) + num(r.culteNV); }
 function normStr(v) { return String(v || "").trim().toLowerCase(); }
+
+function getLogoSrcForSplash() {
+  const existingLogo = document.querySelector(".brand-logo, .login-logo, img[alt*='logo' i], img[src*='logo' i]");
+  if (existingLogo && existingLogo.src) return existingLogo.src;
+  return "logo.png";
+}
+
+function ensureSplashScreen() {
+  let splash = document.getElementById("emmSplashScreen");
+  if (!splash) {
+    if (!document.getElementById("emmSplashStyles")) {
+      const style = document.createElement("style");
+      style.id = "emmSplashStyles";
+      style.textContent = `
+        #emmSplashScreen {
+          position: fixed;
+          inset: 0;
+          z-index: 99999;
+          background: linear-gradient(160deg, #14532d 0%, #15803d 55%, #166534 100%);
+          color: #ffffff;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 24px;
+          opacity: 1;
+          transition: opacity 0.45s ease, transform 0.45s ease;
+        }
+        #emmSplashScreen.is-hiding {
+          opacity: 0;
+          transform: scale(1.03);
+          pointer-events: none;
+        }
+        #emmSplashScreen .splash-logo-wrap {
+          width: 112px;
+          height: 112px;
+          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.14);
+          border: 2px solid rgba(255, 255, 255, 0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 20px;
+          box-shadow: 0 14px 35px rgba(0, 0, 0, 0.25);
+          animation: emmSplashPulse 1.5s ease-in-out infinite alternate;
+          overflow: hidden;
+        }
+        #emmSplashScreen .splash-logo-img {
+          width: 88px;
+          height: 88px;
+          object-fit: contain;
+        }
+        #emmSplashScreen .splash-logo-fallback {
+          font-size: 46px;
+          line-height: 1;
+        }
+        #emmSplashScreen .splash-title-line1 {
+          font-size: clamp(22px, 5vw, 34px);
+          font-weight: 800;
+          letter-spacing: 1.5px;
+          line-height: 1.2;
+          text-transform: uppercase;
+          animation: emmSplashFadeUp 0.65s ease-out both;
+        }
+        #emmSplashScreen .splash-title-line2 {
+          font-size: clamp(20px, 4.5vw, 30px);
+          font-weight: 700;
+          letter-spacing: 3px;
+          line-height: 1.25;
+          text-transform: uppercase;
+          color: #dcfce7;
+          margin-top: 4px;
+          animation: emmSplashFadeUp 0.9s ease-out both;
+        }
+        #emmSplashScreen .splash-sub {
+          margin-top: 14px;
+          font-size: 13px;
+          color: #bbf7d0;
+          letter-spacing: 0.5px;
+        }
+        #emmSplashScreen .splash-bar-track {
+          width: min(260px, 75vw);
+          height: 5px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.22);
+          overflow: hidden;
+          margin-top: 22px;
+        }
+        #emmSplashScreen .splash-bar-fill {
+          height: 100%;
+          width: 0%;
+          background: #ffffff;
+          border-radius: 999px;
+          animation: emmSplashProgress ${SPLASH_DURATION_MS}ms linear forwards;
+        }
+        @keyframes emmSplashPulse {
+          from { transform: scale(0.96); }
+          to { transform: scale(1.05); }
+        }
+        @keyframes emmSplashFadeUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes emmSplashProgress {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    splash = document.createElement("div");
+    splash.id = "emmSplashScreen";
+    const logoSrc = getLogoSrcForSplash();
+    splash.innerHTML = `
+      <div class="splash-logo-wrap">
+        <img src="${logoSrc}" alt="Logo Église Messianique Mondiale" class="splash-logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+        <span class="splash-logo-fallback" style="display:none;">🌿</span>
+      </div>
+      <div class="splash-title-line1">ÉGLISE MESSIANIQUE</div>
+      <div class="splash-title-line2">MONDIALE</div>
+      <div class="splash-sub">RD Congo • Gestion Nationale</div>
+      <div class="splash-bar-track"><div class="splash-bar-fill"></div></div>
+    `;
+    document.body.appendChild(splash);
+  }
+  return splash;
+}
+
+function playSplashAnimation(durationMs = SPLASH_DURATION_MS) {
+  const splash = ensureSplashScreen();
+  splash.classList.remove("is-hiding");
+  splash.style.display = "flex";
+
+  const barFill = splash.querySelector(".splash-bar-fill");
+  if (barFill) {
+    barFill.style.animation = "none";
+    void barFill.offsetWidth;
+    barFill.style.animation = `emmSplashProgress ${durationMs}ms linear forwards`;
+  }
+
+  window.clearTimeout(window.__emmSplashHideTimer);
+  window.clearTimeout(window.__emmSplashRemoveTimer);
+
+  window.__emmSplashHideTimer = window.setTimeout(() => {
+    splash.classList.add("is-hiding");
+    window.__emmSplashRemoveTimer = window.setTimeout(() => {
+      splash.style.display = "none";
+    }, 450);
+  }, durationMs);
+}
 
 function resetPasswordToDefault() {
   try {
@@ -198,6 +351,7 @@ function initAuthState() {
 initAuthState();
 
 document.addEventListener("DOMContentLoaded", () => {
+  playSplashAnimation(SPLASH_DURATION_MS);
   initAuthState();
   Store.load();
   syncPeriodeControls();
@@ -690,7 +844,10 @@ function renderTutoriel() {
     <div class="report-block">
       <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
         <h3 style="margin:0;">❓ Tutoriel Texte & Guide Pratique — EMM RD Congo (Gestion Nationale)</h3>
-        <button type="button" class="btn btn-dark" id="btnPrintTutoriel">🖨️ Imprimer / PDF ce tutoriel</button>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button type="button" class="btn btn-success" id="btnReplaySplash">🌿 Revoir l'animation (3s)</button>
+          <button type="button" class="btn btn-dark" id="btnPrintTutoriel">🖨️ Imprimer / PDF ce tutoriel</button>
+        </div>
       </div>
       <p style="color:#475569;margin-top:0;">Ce guide reste accessible hors connexion et peut être imprimé ou enregistré en PDF.</p>
       ${sections.length === 0
@@ -705,6 +862,11 @@ function renderTutoriel() {
     ${tutoBottomBackBar}`;
 
   bindBackButtons(container);
+
+  const btnReplay = $("#btnReplaySplash");
+  if (btnReplay) {
+    btnReplay.addEventListener("click", () => playSplashAnimation(SPLASH_DURATION_MS));
+  }
 
   const btnPrintTut = $("#btnPrintTutoriel");
   if (btnPrintTut) {
