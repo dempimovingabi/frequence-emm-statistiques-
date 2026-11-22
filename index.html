@@ -1,55 +1,51 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EMM RD Congo — Gestion Nationale</title>
-  <link rel="manifest" href="./manifest.json" />
-  <meta name="theme-color" content="#1e3a8a" />
-  <link rel="icon" type="image/png" href="./icon-192.png" />
-  <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="stylesheet" href="./css/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Église Messianique Mondiale — Gestion Nationale (RD Congo)</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#15803d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="EMM Mondiale">
+  <link rel="apple-touch-icon" href="./logo.png">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-  <div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px;">
-    <div style="background:#ffffff;color:#0f172a;width:100%;max-width:420px;border-radius:14px;padding:24px;box-shadow:0 20px 45px rgba(0,0,0,0.35);">
-      <div style="text-align:center;margin-bottom:16px;">
-        <img src="./assets/images/logos/logo-emm.png" alt="Logo EMM" style="width:68px;height:68px;object-fit:contain;margin-bottom:8px;" onerror="this.style.display='none'" />
-        <h2 style="margin:0;font-size:19px;color:#1e3a8a;">EMM RD CONGO</h2>
-        <div style="font-size:13px;color:#475569;margin-top:3px;">Gestion Nationale — Accès Sécurisé</div>
+  <div id="loginScreen" class="login-screen" style="display:flex;">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="./logo.png" alt="Logo Église Messianique Mondiale" class="login-logo" onerror="this.style.display='none'">
+        <h2>Église Messianique Mondiale</h2>
+        <p>Gestion Nationale — RD Congo</p>
       </div>
 
-      <form id="loginForm" onsubmit="return handleLoginSubmit(event);" style="display:flex;flex-direction:column;gap:12px;">
-        <div class="form-group">
-          <label for="loginPasswordInput">Mot de passe d'accès (défaut : EMM2026)</label>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="password" id="loginPasswordInput" placeholder="Entrez le mot de passe..." required autocomplete="current-password" style="flex:1;" />
-            <button type="button" id="btnToggleLoginEye" onclick="togglePasswordVisibility('loginPasswordInput', 'btnToggleLoginEye');" class="btn btn-light" title="Afficher ou masquer le mot de passe" style="padding:7px 10px;">👁️</button>
-          </div>
+      <form id="loginForm" onsubmit="return handleLoginSubmit(event);" class="login-form">
+        <label for="loginPasswordInput">Mot de passe d'accès</label>
+        <div class="password-input-row">
+          <input type="password" id="loginPasswordInput" placeholder="Entrez le mot de passe" autocomplete="current-password" required>
+          <button type="button" id="btnToggleLoginEye" class="btn-eye-toggle" title="Afficher le mot de passe" onclick="togglePasswordVisibility('loginPasswordInput', 'btnToggleLoginEye')">👁️</button>
         </div>
-        <div id="loginErrorMsg" style="display:none;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:8px;font-size:12.5px;font-weight:600;"></div>
-        <button type="submit" class="btn btn-primary" style="justify-content:center;padding:10px;font-size:14px;">🔓 Se connecter</button>
+        <div id="loginErrorMsg" class="login-error" style="display:none;"></div>
+        <button type="submit" class="btn btn-primary login-submit">🔓 Se connecter</button>
       </form>
 
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
-        <button type="button" id="btnToggleChangePwd" onclick="toggleChangePwdBox();" class="btn btn-light" style="font-size:12px;">🔑 Modifier le mot de passe</button>
-        <button type="button" id="btnForgotPwd" onclick="handleForgotPassword();" class="btn btn-light" style="font-size:12px;color:#dc2626;">❓ Mot de passe oublié</button>
-        <button type="button" id="btnForceReloadAuth" onclick="forceHardRefreshApp();" class="btn btn-light" style="font-size:12px;">🔄 Actualiser</button>
+      <div class="login-links">
+        <button type="button" class="btn-link" onclick="toggleChangePwdBox()">🔑 Changer le mot de passe</button>
+        <button type="button" class="btn-link" onclick="handleForgotPassword()">❓ Mot de passe oublié</button>
+        <button type="button" class="btn-link" onclick="forceHardRefreshApp()">🔄 Actualiser</button>
       </div>
 
-      <form id="changePwdForm" onsubmit="return handleChangePasswordSubmit(event);" style="display:flex;flex-direction:column;gap:10px;margin-top:12px;padding:12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;">
-        <div class="form-group">
-          <label for="oldPwdInput">Mot de passe actuel (EMM2026 après réinitialisation)</label>
-          <input type="text" id="oldPwdInput" value="EMM2026" placeholder="Mot de passe actuel" />
+      <form id="changePwdForm" onsubmit="return handleChangePasswordSubmit(event);" class="change-pwd-form" style="display:none;">
+        <label for="oldPwdInput">Mot de passe actuel</label>
+        <input type="password" id="oldPwdInput" placeholder="Mot de passe actuel" required>
+        <label for="newPwdInput">Nouveau mot de passe (min. 4 caractères)</label>
+        <div class="password-input-row">
+          <input type="password" id="newPwdInput" placeholder="Nouveau mot de passe" minlength="4" required>
+          <button type="button" id="btnToggleNewEye" class="btn-eye-toggle" title="Afficher le nouveau mot de passe" onclick="togglePasswordVisibility('newPwdInput', 'btnToggleNewEye')">👁️</button>
         </div>
-        <div class="form-group">
-          <label for="newPwdInput">Nouveau mot de passe</label>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="password" id="newPwdInput" placeholder="Nouveau mot de passe (min. 4 caractères)" style="flex:1;" />
-            <button type="button" id="btnToggleNewEye" onclick="togglePasswordVisibility('newPwdInput', 'btnToggleNewEye');" class="btn btn-light" title="Afficher ou masquer le nouveau mot de passe" style="padding:7px 10px;">👁️</button>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-success" style="justify-content:center;">💾 Enregistrer le nouveau mot de passe</button>
+        <button type="submit" class="btn btn-success">💾 Enregistrer le nouveau mot de passe</button>
       </form>
     </div>
   </div>
@@ -58,17 +54,17 @@
 
   <aside id="sidebar" class="sidebar">
     <div class="sidebar-header">
-      <div class="brand-box">
-        <img src="./assets/images/logos/logo-emm.png" alt="Logo EMM" class="brand-logo" onerror="this.style.display='none'" />
+      <div class="brand">
+        <img src="./logo.png" alt="Logo" class="brand-logo" onerror="this.style.display='none'">
         <div>
-          <div class="brand-title">EMM RD CONGO</div>
-          <div class="brand-sub">Gestion Nationale</div>
+          <div class="brand-title">EMM MONDIALE</div>
+          <div class="brand-sub">RD Congo • Gestion</div>
         </div>
       </div>
-      <button type="button" id="btnCloseMenu" class="icon-btn" title="Fermer le menu">✕</button>
+      <button type="button" id="btnCloseMenu" class="btn-close-menu" title="Fermer le menu">✕</button>
     </div>
 
-    <nav class="sidebar-nav">
+    <nav class="nav-list">
       <a href="#" class="nav-link active" data-page="dashboard">📊 Tableau de Bord</a>
       <a href="#" class="nav-link" data-page="entites">🏛️ Répertoire Entités</a>
       <a href="#" class="nav-link" data-page="numerique">💻 Numérique</a>
@@ -84,256 +80,200 @@
 
     <div class="sidebar-footer">
       <div id="netStatus">● En ligne (PWA prête)</div>
-      <small>Version 2026 — Hors-ligne activé</small>
+      <button type="button" class="btn btn-light btn-sm" style="width:100%;margin-top:8px;" onclick="lockAppScreen()">🔒 Verrouiller l'écran</button>
     </div>
   </aside>
 
-  <div class="main-wrapper">
+  <div class="app-shell">
     <header class="topbar">
       <div class="topbar-left">
-        <button type="button" id="btnMenu" class="icon-btn" title="Menu">☰</button>
+        <button type="button" id="btnMenu" class="btn-menu" title="Menu">☰</button>
         <div>
-          <h1 class="app-title">EMM RD Congo — Gestion Nationale</h1>
+          <h1 class="app-title">Église Messianique Mondiale — RD Congo</h1>
           <div id="moisAnnee" class="periode-badge">NOVEMBRE 2026</div>
         </div>
       </div>
 
-      <div class="topbar-periode">
-        <select id="selectMois" aria-label="Mois">
-          <option value="JANVIER">JANVIER</option>
-          <option value="FÉVRIER">FÉVRIER</option>
-          <option value="MARS">MARS</option>
-          <option value="AVRIL">AVRIL</option>
-          <option value="MAI">MAI</option>
-          <option value="JUIN">JUIN</option>
-          <option value="JUILLET">JUILLET</option>
-          <option value="AOÛT">AOÛT</option>
-          <option value="SEPTEMBRE">SEPTEMBRE</option>
-          <option value="OCTOBRE">OCTOBRE</option>
-          <option value="NOVEMBRE">NOVEMBRE</option>
-          <option value="DÉCEMBRE">DÉCEMBRE</option>
-        </select>
-        <input type="number" id="inputAnnee" min="2000" max="2100" value="2026" aria-label="Année" />
-        <input type="date" id="inputDateRef" aria-label="Date de référence" />
-        <button type="button" id="btnLogout" onclick="lockAppScreen();" class="btn btn-danger" title="Verrouiller l'application">🔒 Déconnexion</button>
+      <div class="periode-controls">
+        <label>Mois
+          <select id="selectMois">
+            <option value="JANVIER">JANVIER</option>
+            <option value="FÉVRIER">FÉVRIER</option>
+            <option value="MARS">MARS</option>
+            <option value="AVRIL">AVRIL</option>
+            <option value="MAI">MAI</option>
+            <option value="JUIN">JUIN</option>
+            <option value="JUILLET">JUILLET</option>
+            <option value="AOÛT">AOÛT</option>
+            <option value="SEPTEMBRE">SEPTEMBRE</option>
+            <option value="OCTOBRE">OCTOBRE</option>
+            <option value="NOVEMBRE" selected>NOVEMBRE</option>
+            <option value="DÉCEMBRE">DÉCEMBRE</option>
+          </select>
+        </label>
+        <label>Année
+          <input type="number" id="inputAnnee" value="2026" min="2000" max="2100">
+        </label>
+        <label>Date réf.
+          <input type="date" id="inputDateRef">
+        </label>
       </div>
     </header>
 
-    <div class="toolbar">
+    <section class="toolbar">
       <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Rechercher une entité, province, responsable..." />
-        <button type="button" id="btnClearSearch" class="btn btn-light" title="Effacer la recherche">✕</button>
+        <input type="text" id="searchInput" placeholder="Rechercher (province, entité, responsable...)">
+        <button type="button" id="btnClearSearch" class="btn btn-light btn-sm" title="Effacer la recherche">✕</button>
       </div>
 
       <div class="action-bar">
         <button type="button" id="btnNouveau" class="btn btn-success">＋ Nouveau</button>
         <button type="button" id="btnModifier" class="btn btn-info">✏️ Modifier</button>
-        <button type="button" id="btnDupliquer" class="btn btn-primary">📋 Dupliquer</button>
+        <button type="button" id="btnDupliquer" class="btn btn-light">📋 Dupliquer</button>
         <button type="button" id="btnArchiver" class="btn btn-warning">📦 Archiver</button>
         <button type="button" id="btnSupprimer" class="btn btn-danger">🗑️ Supprimer</button>
         <button type="button" id="btnPDF" class="btn btn-dark">🖨️ PDF / Imprimer</button>
       </div>
-
-      <div class="print-options">
-        <label>Police :
-          <select id="fontSelect">
-            <option value="Segoe UI" selected>Segoe UI</option>
-            <option value="Arial">Arial</option>
-            <option value="Calibri">Calibri</option>
-            <option value="Verdana">Verdana</option>
-            <option value="Tahoma">Tahoma</option>
-            <option value="Trebuchet MS">Trebuchet MS</option>
-            <option value="Roboto">Roboto</option>
-            <option value="Times New Roman">Times New Roman</option>
-            <option value="Georgia">Georgia</option>
-            <option value="Courier New">Courier New</option>
-          </select>
-        </label>
-        <label>Taille :
-          <select id="fontSize">
-            <option value="11">11 px</option>
-            <option value="12">12 px</option>
-            <option value="13">13 px</option>
-            <option value="14" selected>14 px</option>
-            <option value="15">15 px</option>
-            <option value="16">16 px</option>
-            <option value="18">18 px</option>
-            <option value="20">20 px</option>
-            <option value="22">22 px</option>
-            <option value="24">24 px</option>
-          </select>
-        </label>
-        <label>Orientation :
-          <select id="printOrientation">
-            <option value="portrait" selected>Portrait</option>
-            <option value="landscape">Paysage</option>
-          </select>
-        </label>
-      </div>
-    </div>
-
-    <div id="printMetaLine" class="print-meta-line"></div>
+    </section>
 
     <main class="content">
+      <div id="printMetaLine" class="print-only-meta"></div>
+
       <section id="page-dashboard" class="page active">
+        <h2>📊 Tableau de Bord National</h2>
         <div id="kpiGrid" class="kpi-grid"></div>
         <div id="provinceSummary"></div>
       </section>
 
       <section id="page-entites" class="page">
+        <h2>🏛️ Répertoire des Entités par Province</h2>
         <div id="entitesContent"></div>
       </section>
 
       <section id="page-numerique" class="page">
-        <div class="report-block">
-          <h3>💻 Rapports Numériques</h3>
-          <div class="table-wrapper">
-            <table id="tableNumerique" class="data-table"></table>
-          </div>
+        <h2>💻 Rapport Mensuel — Numérique</h2>
+        <div class="table-wrapper">
+          <table id="tableNumerique" class="data-table"></table>
         </div>
       </section>
 
       <section id="page-diffusion" class="page">
-        <div class="report-block">
-          <h3>📻 Rapports Diffusion</h3>
-          <div class="table-wrapper">
-            <table id="tableDiffusion" class="data-table"></table>
-          </div>
+        <h2>📻 Rapport Mensuel — Diffusion</h2>
+        <div class="table-wrapper">
+          <table id="tableDiffusion" class="data-table"></table>
         </div>
       </section>
 
       <section id="page-diffusion-suite" class="page">
-        <div class="report-block">
-          <h3>📋 Rapports Diffusion — Suite</h3>
-          <div class="table-wrapper">
-            <table id="tableDiffusionSuite" class="data-table"></table>
-          </div>
+        <h2>📋 Rapport Mensuel — Diffusion (Suite : Campagnes & Fleurs)</h2>
+        <div class="table-wrapper">
+          <table id="tableDiffusionSuite" class="data-table"></table>
         </div>
       </section>
 
       <section id="page-synthese" class="page">
+        <h2>📈 Synthèse Nationale</h2>
         <div id="syntheseContent"></div>
       </section>
 
       <section id="page-rapport-global" class="page">
+        <h2>📑 Rapport Global par Province</h2>
         <div id="rapportGlobal"></div>
       </section>
 
       <section id="page-rapport-detaille" class="page">
+        <h2>🗂️ Rapport Détaillé par Province</h2>
         <div id="rapportDetaille"></div>
       </section>
 
       <section id="page-graphiques" class="page">
+        <h2>📉 Graphiques & Fréquences</h2>
         <div id="graphiquesContent"></div>
       </section>
 
       <section id="page-archives" class="page">
+        <h2>🗄️ Archives & Sauvegarde</h2>
         <div id="archivesList"></div>
       </section>
 
       <section id="page-tutoriel" class="page">
+        <h2>❓ Tutoriel & Guide d'Utilisation</h2>
         <div id="tutorielContent"></div>
       </section>
     </main>
   </div>
 
   <div id="modal" class="modal">
-    <div class="modal-card" id="modalCardBox">
+    <div class="modal-card">
       <div class="modal-header">
         <h3 id="modalTitle">Formulaire</h3>
-        <button type="button" id="btnCloseModal" class="icon-btn">✕</button>
+        <button type="button" id="btnCloseModal" class="btn-close-modal">✕</button>
       </div>
       <div id="modalBody" class="modal-body"></div>
-      <div class="modal-footer" id="modalFooterBox">
+      <div class="modal-footer">
         <button type="button" id="btnCancel" class="btn btn-light">Annuler</button>
-        <button type="button" id="btnSave" class="btn btn-success">💾 Enregistrer</button>
+        <button type="button" id="btnSave" class="btn btn-primary">💾 Enregistrer</button>
       </div>
     </div>
   </div>
 
-  <div id="pwaUpdateBanner" style="display:none;position:fixed;bottom:14px;right:14px;left:14px;max-width:520px;margin:0 auto;background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:10px;padding:10px 14px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,0.25);align-items:center;justify-content:space-between;gap:10px;">
-    <span style="font-size:12.5px;">✨ Une nouvelle version de l'application est disponible.</span>
-    <button type="button" id="btnApplyUpdate" class="btn btn-success">🔄 Mettre à jour</button>
+  <div id="printPreviewModal" class="modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>🖨️ Aperçu & Options d'Impression PDF</h3>
+        <button type="button" id="btnClosePrintModal" class="btn-close-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="print-options-grid">
+          <div class="form-group">
+            <label for="fontSelect">Police</label>
+            <select id="fontSelect">
+              <option value="Segoe UI" selected>Segoe UI</option>
+              <option value="Arial">Arial</option>
+              <option value="Calibri">Calibri</option>
+              <option value="Georgia">Georgia</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="fontSize">Taille (px)</label>
+            <input type="number" id="fontSize" value="13" min="10" max="20">
+          </div>
+          <div class="form-group">
+            <label for="printOrientation">Orientation</label>
+            <select id="printOrientation">
+              <option value="portrait" selected>Portrait</option>
+              <option value="landscape">Paysage</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="printScope">Contenu à imprimer</label>
+            <select id="printScope">
+              <option value="active" selected>Page active uniquement</option>
+              <option value="full">Rapport complet</option>
+            </select>
+          </div>
+        </div>
+        <div id="printPreviewFrame" class="print-preview-box"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btnCancelPrintModal" class="btn btn-light">Fermer</button>
+        <button type="button" id="btnLaunchPrint" class="btn btn-dark">🖨️ Lancer l'impression</button>
+      </div>
+    </div>
   </div>
 
   <script src="./js/data.js"></script>
+  <script src="./js/schemas.js"></script>
+  <script src="./js/store.js"></script>
+  <script src="./js/print.js"></script>
   <script src="./js/app.js"></script>
-  <script src="./js/pdf.js"></script>
+
   <script>
-    (function () {
-      let deferredInstallPrompt = null;
-      let waitingWorker = null;
-
-      window.addEventListener("beforeinstallprompt", (e) => {
-        e.preventDefault();
-        deferredInstallPrompt = e;
-
-        const actionBar = document.querySelector(".action-bar");
-        if (actionBar && !document.getElementById("btnInstallPWA")) {
-          const btnInstall = document.createElement("button");
-          btnInstall.type = "button";
-          btnInstall.id = "btnInstallPWA";
-          btnInstall.className = "btn btn-primary";
-          btnInstall.textContent = "📲 Installer l'App";
-          btnInstall.addEventListener("click", async () => {
-            if (!deferredInstallPrompt) return;
-            deferredInstallPrompt.prompt();
-            await deferredInstallPrompt.userChoice;
-            deferredInstallPrompt = null;
-            btnInstall.remove();
-          });
-          actionBar.appendChild(btnInstall);
-        }
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
       });
-
-      window.addEventListener("appinstalled", () => {
-        deferredInstallPrompt = null;
-        const btn = document.getElementById("btnInstallPWA");
-        if (btn) btn.remove();
-      });
-
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("./sw.js").then((reg) => {
-            if (reg.waiting) {
-              waitingWorker = reg.waiting;
-              const banner = document.getElementById("pwaUpdateBanner");
-              if (banner) banner.style.display = "flex";
-            }
-
-            reg.addEventListener("updatefound", () => {
-              const newWorker = reg.installing;
-              if (!newWorker) return;
-              newWorker.addEventListener("statechange", () => {
-                if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-                  waitingWorker = newWorker;
-                  const banner = document.getElementById("pwaUpdateBanner");
-                  if (banner) banner.style.display = "flex";
-                }
-              });
-            });
-          }).catch(() => {});
-
-          let refreshing = false;
-          navigator.serviceWorker.addEventListener("controllerchange", () => {
-            if (refreshing) return;
-            refreshing = true;
-            window.location.reload();
-          });
-        });
-      }
-
-      const btnApply = document.getElementById("btnApplyUpdate");
-      if (btnApply) {
-        btnApply.addEventListener("click", () => {
-          if (waitingWorker) {
-            waitingWorker.postMessage({ type: "SKIP_WAITING" });
-          } else {
-            window.location.reload();
-          }
-        });
-      }
-    })();
+    }
   </script>
 </body>
 </html>
