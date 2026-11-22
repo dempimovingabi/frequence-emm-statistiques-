@@ -1,10 +1,12 @@
-const CACHE_NAME = "emm-mondiale-pwa-v1.0.0";
+const CACHE_NAME = "emm-mondiale-pwa-v1.0.1";
 
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./logo.png",
+  "./assets/img/logo-emm.png",
+  "./icon-192.png",
+  "./icon-512.png",
   "./css/style.css",
   "./css/styles.css",
   "./js/app.js",
