@@ -515,34 +515,98 @@ function renderTutoriel() {
   const q = App.searchTerm;
   const sections = [
     {
-      title: "1. Connexion, mot de passe & période active",
-      body: "À l'ouverture, entrez le mot de passe d'accès (par défaut <strong>EMM2026</strong>, personnalisable depuis l'écran de connexion ou réinitialisable via <strong>❓ Mot de passe oublié</strong> ; utilisez l'icône <strong>👁️ / 🙈</strong> pour afficher ou masquer la saisie). Utilisez le bouton <strong>🔒 Déconnexion</strong> en haut à droite pour verrouiller l'application. Sélectionnez ensuite le <strong>Mois</strong>, l'<strong>Année</strong> et la <strong>Date de référence</strong>."
+      title: "1. Connexion, sécurité & période active",
+      body: "Saisissez le mot de passe d'accès (par défaut <strong>EMM2026</strong>), cliquez sur <strong>👁️ / 🙈</strong> pour afficher ou masquer le mot de passe, et utilisez <strong>❓ Mot de passe oublié</strong> si besoin. Sélectionnez ensuite le <strong>Mois</strong>, l'<strong>Année</strong> et la <strong>Date de référence</strong> en haut de l'écran avant de saisir vos rapports."
     },
     {
-      title: "2. Répertoire des Entités (par Province)",
-      body: "Ouvrez <strong>🏛️ Répertoire Entités</strong>, choisissez la <strong>Province</strong> (ex. <em>Kasaï-Central</em>), puis cliquez sur <strong>＋ Enregistrer une entité</strong>. Une alerte vous prévient en cas de doublon. Utilisez les boutons sur chaque ligne : <strong>👁️</strong> Aperçu, <strong>✏️</strong> Modifier, <strong>📦</strong> Archiver, <strong>🗑️</strong> Supprimer."
+      title: "2. Répertoire des Entités (5 types & prévention des doublons)",
+      body: "Ouvrez <strong>🏛️ Répertoire Entités</strong>, choisissez la <strong>Province</strong> (ex. <em>Kasaï-Central</em>) et cliquez sur <strong>＋ Enregistrer une entité</strong>. Les types disponibles sont : <strong>Centre de Formation</strong>, <strong>Johrei Center</strong>, <strong>Unité religieuse</strong>, <strong>Foyer de lumière</strong> et <strong>noyau de salut</strong>. Un avertissement s'affiche si une même dénomination existe déjà dans la province."
     },
     {
-      title: "3. Saisie & Duplication des Rapports",
-      body: "Rendez-vous dans <strong>💻 Numérique</strong>, <strong>📻 Diffusion</strong> ou <strong>📋 Diffusion Suite</strong>. Cliquez sur <strong>＋ Nouveau</strong> pour saisir un rapport ou sélectionnez une ligne puis cliquez sur <strong>📋 Dupliquer</strong> pour reprendre rapidement une entité au mois suivant. Le <strong>Total Culte</strong> se calcule automatiquement."
+      title: "3. Saisie mensuelle, pré-remplissage auto & duplication",
+      body: "Dans <strong>💻 Numérique</strong>, <strong>📻 Diffusion</strong> et <strong>📋 Diffusion Suite</strong>, cliquez sur <strong>＋ Nouveau</strong> et utilisez le sélecteur rapide d'entité pour pré-remplir province, type, dénomination et responsable. Le mois suivant, sélectionnez la ligne et cliquez sur <strong>📋 Dupliquer</strong> pour repartir des effectifs de base avec les fréquences du culte remises à 0."
     },
     {
       title: "4. Tableau de Bord, Synthèse, Rapports & Graphiques",
-      body: "Consultez <strong>📊 Tableau de Bord</strong> pour les indicateurs clés, <strong>📈 Synthèse Nationale</strong> pour la <em>Complétude des Rapports par Province</em>, <strong>📑 Rapport Global</strong> et <strong>🗂️ Rapport Détaillé</strong> pour la vue par province, et <strong>📉 Graphiques</strong> pour comparer les fréquences."
+      body: "Consultez <strong>📊 Tableau de Bord</strong> pour les compteurs clés, <strong>📈 Synthèse Nationale</strong> pour le taux de <em>Complétude des Rapports par Province</em>, <strong>📑 Rapport Global</strong> et <strong>🗂️ Rapport Détaillé</strong> pour la vue consolidée par province, et <strong>📉 Graphiques</strong> pour visualiser les fréquences (Membres, Sympathisants, Nouveaux Venus)."
     },
     {
-      title: "5. Typographie, Impression PDF, Export CSV & Sauvegarde JSON",
-      body: "Choisissez la <strong>Police</strong> (10 polices) et la <strong>Taille</strong> (jusqu'à 24 px), puis cliquez sur <strong>🖨️ PDF / Imprimer</strong>. Utilisez <strong>📊 CSV</strong> pour tableur, et allez dans <strong>🗄️ Archives</strong> pour restaurer un élément ou sauvegarder via <strong>⬇️ Exporter (.json)</strong> / <strong>⬆️ Importer (.json)</strong>."
+      title: "5. Impression PDF avec aperçu, CSV & sauvegarde .json",
+      body: "Cliquez sur <strong>🖨️ PDF / Imprimer</strong> pour ouvrir l'aperçu avant impression : choisissez la <strong>Police</strong>, la <strong>Taille</strong>, l'<strong>Orientation</strong> (<strong>Portrait</strong> ou <strong>Paysage</strong>) et le contenu (<strong>Page active uniquement</strong> ou <strong>Rapport complet</strong>). Utilisez <strong>📊 CSV</strong> pour tableur et <strong>⬇️ Exporter (.json)</strong> / <strong>⬆️ Importer (.json)</strong> dans <strong>🗄️ Archives</strong> pour sécuriser vos données."
+    },
+    {
+      title: "6. Bonnes pratiques hors-ligne, PWA & passage à l'APK",
+      body: "L'application fonctionne hors connexion grâce au cache local et au Service Worker. Avant toute mise à jour importante ou changement de téléphone/APK, exportez toujours un fichier <strong>.json</strong>. En cas de doute sur l'affichage d'une version sur mobile, utilisez <strong>🔄 Actualiser</strong> sur l'écran de connexion."
     }
   ].filter(s => !q || (s.title + " " + s.body).toLowerCase().includes(q));
+
+  const visualSteps = [
+    {
+      step: "Étape 1",
+      badge: "Accès & Période",
+      targetPage: "dashboard",
+      targetLabel: "Aller au Tableau de Bord",
+      desc: "Déverrouiller avec EMM2026 → Régler Mois, Année et Date de référence."
+    },
+    {
+      step: "Étape 2",
+      badge: "Entités",
+      targetPage: "entites",
+      targetLabel: "Ouvrir Répertoire Entités",
+      desc: "Choisir la province → Enregistrer l'entité (Centre de Formation, Johrei Center, Unité religieuse, Foyer de lumière, noyau de salut)."
+    },
+    {
+      step: "Étape 3",
+      badge: "Rapports",
+      targetPage: "numerique",
+      targetLabel: "Ouvrir Numérique",
+      desc: "Saisir ou dupliquer les rapports Numérique, Diffusion et Diffusion Suite (Total Culte automatique)."
+    },
+    {
+      step: "Étape 4",
+      badge: "Analyse",
+      targetPage: "synthese",
+      targetLabel: "Ouvrir Synthèse Nationale",
+      desc: "Vérifier la complétude par province, le Tableau de Bord, les Rapports et les Graphiques."
+    },
+    {
+      step: "Étape 5",
+      badge: "PDF / .json / APK",
+      targetPage: "archives",
+      targetLabel: "Ouvrir Archives & Sauvegarde",
+      desc: "Exporter .json / CSV, lancer l'aperçu PDF (Portrait/Paysage, Page active/Rapport complet) et préparer la PWA/APK."
+    }
+  ];
+
+  const visualDiagramHtml = `
+    <div class="report-block" style="margin-bottom:16px;">
+      <h3>🖼️ Tutoriel Visuel — Parcours Complet de l'Application</h3>
+      <p style="color:#475569;margin-top:0;font-size:13px;">Cliquez sur le bouton d'une étape pour accéder directement à l'écran correspondant et tester le flux.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:10px;">
+        ${visualSteps.map((st, index) => `
+          <div style="border:1px solid #cbd5e1;border-radius:10px;padding:12px;background:#ffffff;display:flex;flex-direction:column;justify-content:space-between;gap:8px;box-shadow:0 2px 6px rgba(15,23,42,0.05);">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="background:#1e3a8a;color:#ffffff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;">${st.step}</span>
+                <span style="font-size:11.5px;font-weight:700;color:#15803d;">${st.badge}</span>
+              </div>
+              <div style="font-size:13px;line-height:1.45;color:#1e293b;">${st.desc}</div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding-top:6px;border-top:1px dashed #e2e8f0;">
+              <button type="button" class="btn btn-primary btn-tuto-nav" data-page="${st.targetPage}" style="font-size:11.5px;padding:5px 8px;">${st.targetLabel}</button>
+              ${index < visualSteps.length - 1 ? `<span style="color:#64748b;font-weight:700;font-size:13px;">➔</span>` : `<span style="color:#15803d;font-weight:700;font-size:11.5px;">✓ Clôture</span>`}
+            </div>
+          </div>`).join("")}
+      </div>
+    </div>`;
 
   container.innerHTML = `
     <div class="report-block">
       <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
-        <h3 style="margin:0;">❓ Tutoriel d'utilisation — EMM RD Congo (Gestion Nationale)</h3>
+        <h3 style="margin:0;">❓ Tutoriel Texte & Guide Pratique — EMM RD Congo (Gestion Nationale)</h3>
         <button type="button" class="btn btn-dark" id="btnPrintTutoriel">🖨️ Imprimer / PDF ce tutoriel</button>
       </div>
-      <p style="color:#475569;margin-top:0;">Ce guide reste accessible même sans connexion internet.</p>
+      <p style="color:#475569;margin-top:0;">Ce guide reste accessible hors connexion et peut être imprimé ou enregistré en PDF.</p>
       ${sections.length === 0
         ? `<p style="text-align:center;color:#64748b;padding:16px;">Aucune section du tutoriel ne correspond à votre recherche.</p>`
         : sections.map(s => `
@@ -550,12 +614,17 @@ function renderTutoriel() {
             <h4 style="margin:0 0 6px;color:#1e3a8a;font-size:14px;">${s.title}</h4>
             <p style="margin:0;line-height:1.5;color:#1e293b;">${s.body}</p>
           </div>`).join("")}
-    </div>`;
+    </div>
+    ${visualDiagramHtml}`;
 
   const btnPrintTut = $("#btnPrintTutoriel");
   if (btnPrintTut) {
     btnPrintTut.addEventListener("click", () => window.print());
   }
+
+  $$(".btn-tuto-nav", container).forEach(btn => {
+    btn.addEventListener("click", () => goToPage(btn.dataset.page));
+  });
 }
 
 function renderEntitesPage() {
