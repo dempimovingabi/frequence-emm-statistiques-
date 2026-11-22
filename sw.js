@@ -1,4 +1,4 @@
-const CACHE_NAME = "emm-rdc-offline-v23";
+const CACHE_NAME = "emm-rdc-offline-v24";
 const ASSETS = [
   "./",
   "./index.html",
